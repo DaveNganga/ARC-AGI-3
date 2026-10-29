@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+output/runs/*.json
+output/arc_runs/*.json
+recordings/
+output/arc_recordings/
+.env
+.streamlit/secrets.toml
+output/experiments/*.json
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+

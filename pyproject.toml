@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qahs"
+version = "0.1.0"
+description = "Quantum-Assisted Hypothesis Search research prototype"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[project.optional-dependencies]
+llm = ["openai>=1.0"]
+arc = ["arc-agi>=0.9.9"]
+full = ["openai>=1.0", "arc-agi>=0.9.9"]
+
+[project.scripts]
+qahs-demo = "qahs.cli:main"
+qahs-benchmark = "qahs.benchmark_cli:main"
+qahs-arc = "qahs.arc_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

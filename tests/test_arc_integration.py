@@ -4,7 +4,7 @@ from qahs.arc_agent import run_arc_comparison
 from qahs.arc_environment import DemoArcEnvironment, validate_arc_game_id
 from qahs.arc_models import ArcObservation
 from qahs.arc_objective import action_signature, score_arc_actions
-from qahs.arc_reasoner import DemoArcReasoner, frame_summary, parse_proposal
+from qahs.arc_reasoner import DemoArcReasoner, frame_summary, parse_proposal, parse_reflection
 
 
 class ArcIntegrationTests(unittest.TestCase):
@@ -86,6 +86,23 @@ class ArcIntegrationTests(unittest.TestCase):
         scores = {row.action: row for row in score_arc_actions(proposal, history, "same-frame")}
         self.assertGreater(scores["probe"].repetition_penalty, 0.0)
         self.assertGreater(scores["wander"].utility, scores["probe"].utility)
+
+    def test_reflection_builds_a_persistent_belief_ledger(self):
+        reflection = parse_reflection({
+            "summary": "The action supported the switch rule.",
+            "observed_effect": "A door opened.",
+            "beliefs": [{
+                "id": 4,
+                "statement": "The object is a switch.",
+                "confidence": 1.4,
+                "status": "supported",
+                "evidence": "The door changed after contact.",
+            }],
+            "next_focus": "Try the opened path.",
+        })
+        self.assertEqual(reflection.beliefs[0].id, 0)
+        self.assertEqual(reflection.beliefs[0].confidence, 1.0)
+        self.assertEqual(reflection.beliefs[0].status, "supported")
 
 
 if __name__ == "__main__":

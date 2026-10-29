@@ -5,11 +5,27 @@ from collections import Counter
 from dataclasses import asdict
 from typing import Any, Protocol
 
-from .arc_models import ArcActionCandidate, ArcHypothesis, ArcObservation, ArcProposal
+from .arc_models import (
+    ArcActionCandidate,
+    ArcBelief,
+    ArcHypothesis,
+    ArcObservation,
+    ArcProposal,
+    ArcReflection,
+)
 
 
 class ArcReasoner(Protocol):
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal: ...
+
+    def reflect(
+        self,
+        before: ArcObservation,
+        after: ArcObservation,
+        proposal: ArcProposal,
+        selected: ArcActionCandidate,
+        history: list[dict[str, Any]],
+    ) -> ArcReflection: ...
 
 
 ARC_PROPOSAL_SCHEMA: dict[str, Any] = {
@@ -65,6 +81,32 @@ ARC_PROPOSAL_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
 }
 
+ARC_REFLECTION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "observed_effect": {"type": "string"},
+        "beliefs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "statement": {"type": "string"},
+                    "confidence": {"type": "number"},
+                    "status": {"type": "string", "enum": ["supported", "weakened", "rejected", "uncertain", "new"]},
+                    "evidence": {"type": "string"},
+                },
+                "required": ["id", "statement", "confidence", "status", "evidence"],
+                "additionalProperties": False,
+            },
+        },
+        "next_focus": {"type": "string"},
+    },
+    "required": ["summary", "observed_effect", "beliefs", "next_focus"],
+    "additionalProperties": False,
+}
+
 
 def frame_summary(frame: tuple[tuple[int, ...], ...]) -> str:
     """Represent a grid compactly while preserving coordinates and spatial runs."""
@@ -113,12 +155,13 @@ class OpenAIArcReasoner:
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
         self.last_call_count = 1
+        ledger = history[-1].get("belief_ledger", []) if history else []
         prompt = f"""You are controlling an unfamiliar ARC-AGI-3 game. No instructions reveal its goal.
-Infer possible world rules from the current grid and prior action results. Return 2 to 8 competing hypotheses and 2 to 8 concrete action candidates. Each hypothesis must predict a short observable outcome for every candidate_id. Also recommend one candidate yourself; this recommendation is the LLM-only baseline.
+Infer possible world rules from the current grid and accumulated evidence. Return 2 to 8 competing hypotheses and 2 to 8 concrete action candidates. Each hypothesis must predict a short observable outcome for every candidate_id. Also recommend one candidate yourself; this recommendation is the LLM-only baseline.
 
 The grid description preserves exact x/y coordinates and non-background shapes. Reason spatially from those runs. Prefer actions that can distinguish hypotheses or produce level progress. Treat changed pixels as evidence, not as progress by itself. Do not repeat a click from the same frame state when it previously caused no change or only toggled the same pattern; propose a genuinely different test instead.
 
-Maintain persistent hypotheses across turns. On turn 1 assign IDs 0 through N-1. On later turns reuse the same ID for the same explanation, update its confidence using the observed result, and retain plausible alternatives. Replace an explanation only when evidence contradicts it; its replacement inherits that slot's ID. Every response must use contiguous IDs starting at 0.
+Maintain the belief ledger across turns. Preserve supported explanations, lower confidence in contradicted explanations, and do not silently restore rejected ideas. Prefer a focused experiment that separates the leading hypotheses over random exploration. Every response must use contiguous IDs starting at 0.
 
 Only use these currently available action types: {list(observation.available_actions)}.
 ACTION1=up, ACTION2=down, ACTION3=left, ACTION4=right, ACTION5=interact/space, ACTION6=click and requires x,y from 0 through 63, ACTION7=undo. Meanings may still be game-specific.
@@ -128,11 +171,38 @@ Game state: {observation.state}; levels completed: {observation.levels_completed
 Current grid:
 {frame_summary(observation.frame)}
 
-Prior turns:
-{history[-12:]}
+Current belief ledger:
+{ledger}
+
+Recent evidence:
+{history[-8:]}
 """
         payload = self.caller.call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal")
         return parse_proposal(payload, observation.available_actions)
+
+    def reflect(
+        self,
+        before: ArcObservation,
+        after: ArcObservation,
+        proposal: ArcProposal,
+        selected: ArcActionCandidate,
+        history: list[dict[str, Any]],
+    ) -> ArcReflection:
+        self.last_call_count = 1
+        previous_ledger = history[-1].get("belief_ledger", []) if history else []
+        prompt = f"""Act as an evidence reviewer for an unfamiliar ARC-AGI-3 game. An action was just taken. Update the persistent belief ledger; do not choose the next action yet.
+
+Compare each hypothesis's prediction for the selected candidate with the actual observation. Mark it supported, weakened, rejected, or uncertain. Preserve stable IDs and statements when the underlying explanation is unchanged. You may introduce a genuinely new explanation only when the observation demands it, and the complete returned ledger must contain 2 to 8 beliefs with contiguous IDs starting at 0. Confidence must be between 0 and 1. Pixel change alone is not proof of progress; level completion and terminal state are stronger evidence.
+
+Previous ledger: {previous_ledger}
+Hypotheses tested: {[asdict(item) for item in proposal.hypotheses]}
+Selected action: {asdict(selected)}
+Before: state={before.state}, levels={before.levels_completed}\n{frame_summary(before.frame)}
+After: state={after.state}, levels={after.levels_completed}, event={after.event}\n{frame_summary(after.frame)}
+Recent evidence: {history[-6:]}
+"""
+        payload = self.caller.call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection")
+        return parse_reflection(payload)
 
 
 def parse_proposal(payload: dict[str, Any], available_actions: tuple[str, ...]) -> ArcProposal:
@@ -234,6 +304,29 @@ class DemoArcReasoner:
             recommendation_reason="The baseline favors apparent immediate progress.",
         )
 
+    def reflect(
+        self,
+        before: ArcObservation,
+        after: ArcObservation,
+        proposal: ArcProposal,
+        selected: ArcActionCandidate,
+        history: list[dict[str, Any]],
+    ) -> ArcReflection:
+        del before, history
+        self.last_call_count = 0
+        progressed = after.levels_completed > 0 or after.state.upper() == "WIN" or after.event == "door_opened"
+        beliefs = tuple(
+            ArcBelief(
+                item.id,
+                item.statement,
+                min(1.0, item.confidence + 0.25) if progressed else item.confidence,
+                "supported" if progressed else "uncertain",
+                f"{selected.candidate_id} produced {after.event}",
+            )
+            for item in proposal.hypotheses
+        )
+        return ArcReflection("Updated beliefs from the observed result.", after.event, beliefs, "Test the leading explanation.")
+
 
 class CachingArcReasoner:
     """Reuse identical proposals across matched conditions for a fairer comparison."""
@@ -241,6 +334,7 @@ class CachingArcReasoner:
     def __init__(self, reasoner: ArcReasoner):
         self.reasoner = reasoner
         self.cache: dict[str, ArcProposal] = {}
+        self.reflection_cache: dict[str, ArcReflection] = {}
         self.last_call_count = 0
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
@@ -252,3 +346,48 @@ class CachingArcReasoner:
         self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
         self.cache[key] = proposal
         return proposal
+
+    def reflect(
+        self,
+        before: ArcObservation,
+        after: ArcObservation,
+        proposal: ArcProposal,
+        selected: ArcActionCandidate,
+        history: list[dict[str, Any]],
+    ) -> ArcReflection:
+        key = json.dumps({
+            "before": asdict(before),
+            "after": asdict(after),
+            "proposal": asdict(proposal),
+            "selected": asdict(selected),
+            "history": history,
+        }, sort_keys=True)
+        if key in self.reflection_cache:
+            self.last_call_count = 0
+            return self.reflection_cache[key]
+        reflection = self.reasoner.reflect(before, after, proposal, selected, history)
+        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
+        self.reflection_cache[key] = reflection
+        return reflection
+
+
+def parse_reflection(payload: dict[str, Any]) -> ArcReflection:
+    rows = sorted(payload.get("beliefs", [])[:8], key=lambda row: int(row.get("id", 0)))
+    if not rows:
+        raise ValueError("The model returned no belief updates")
+    beliefs = tuple(
+        ArcBelief(
+            id=index,
+            statement=str(row["statement"]),
+            confidence=min(1.0, max(0.0, float(row["confidence"]))),
+            status=str(row["status"]),
+            evidence=str(row["evidence"]),
+        )
+        for index, row in enumerate(rows)
+    )
+    return ArcReflection(
+        summary=str(payload.get("summary", "")),
+        observed_effect=str(payload.get("observed_effect", "")),
+        beliefs=beliefs,
+        next_focus=str(payload.get("next_focus", "")),
+    )

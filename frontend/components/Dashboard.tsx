@@ -5,6 +5,11 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 type Frame = number[][];
 type Candidate = { candidate_id: string; action_type: string; x?: number | null; y?: number | null; description?: string };
 type Observation = { frame?: Frame; levels_completed?: number; event?: string };
+type Reflection = {
+  summary?: string;
+  next_focus?: string;
+  beliefs?: { id: number; statement: string; confidence: number; status: string; evidence: string }[];
+};
 type Turn = {
   turn: number;
   observation_before: Observation;
@@ -12,6 +17,7 @@ type Turn = {
   selected_candidate: Candidate;
   proposal: { recommended_candidate_id: string; summary?: string };
   search_diagnostics?: { quantum_used?: boolean; shots?: number };
+  reflection?: Reflection | null;
   model_calls?: number;
 };
 type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null };
@@ -146,6 +152,7 @@ function EpisodeDetails({ label, episode }: { label: string; episode: Episode })
         <details key={turn.turn}>
           <summary>#{turn.turn} · {turn.selected_candidate.action_type}</summary>
           <p>{turn.proposal.summary}</p>
+          {turn.reflection && <p className="reflection-note"><strong>Reflection:</strong> {turn.reflection.summary} <span>Next: {turn.reflection.next_focus}</span></p>}
           <div className="frames"><div><small>Before</small><Grid frame={turn.observation_before.frame} /></div><div><small>After · {turn.observation_after.event}</small><Grid frame={turn.observation_after.frame} /></div></div>
           <p className="turn-note">Pick: {turn.selected_candidate.description || turn.selected_candidate.candidate_id} · LLM: {turn.proposal.recommended_candidate_id} · Changed cells: {changed(turn)}</p>
         </details>

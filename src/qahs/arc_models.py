@@ -33,6 +33,23 @@ class ArcProposal:
 
 
 @dataclass(frozen=True)
+class ArcBelief:
+    id: int
+    statement: str
+    confidence: float
+    status: str
+    evidence: str
+
+
+@dataclass(frozen=True)
+class ArcReflection:
+    summary: str
+    observed_effect: str
+    beliefs: tuple[ArcBelief, ...]
+    next_focus: str
+
+
+@dataclass(frozen=True)
 class ArcObservation:
     game_id: str
     state: str
@@ -62,6 +79,7 @@ class ArcTurn:
     action_scores: list[dict[str, Any]]
     search_diagnostics: dict[str, Any]
     observation_after: ArcObservation
+    reflection: ArcReflection | None = None
     model_calls: int = 1
 
 

@@ -81,7 +81,10 @@ def run_arc_episode(
             selected = next(candidate for candidate in proposal.action_candidates if candidate.candidate_id == candidate_id)
             before = observation
             observation = environment.step(selected)
+            reflection = reasoner.reflect(before, observation, proposal, selected, history)
+            model_calls += int(getattr(reasoner, "last_call_count", 1))
             cells_changed = changed_cell_count(before.frame, observation.frame)
+            belief_ledger = [asdict(item) for item in reflection.beliefs]
             history.append({
                 "turn": turn_number,
                 "candidate_id": selected.candidate_id,
@@ -97,6 +100,9 @@ def run_arc_episode(
                     {"id": item.id, "statement": item.statement, "confidence": item.confidence}
                     for item in proposal.hypotheses
                 ],
+                "reflection": reflection.summary,
+                "belief_ledger": belief_ledger,
+                "next_focus": reflection.next_focus,
                 "result": observation.event,
                 "state": observation.state,
             })
@@ -109,6 +115,7 @@ def run_arc_episode(
                 action_scores=score_rows,
                 search_diagnostics=diagnostics,
                 observation_after=observation,
+                reflection=reflection,
                 model_calls=model_calls,
             ))
             if observation.terminal:

@@ -51,6 +51,13 @@ The controlled 64-world track already has the right structure: the same six dime
 - Tests: `tests/test_phase0.py` (10 new tests; 26 in total).
 - Old findings A1 (no coupling) and A2 (free-text outcomes) are **superseded by Phases 1–2**.
 
+### Phase 0b — Token efficiency and crash-safe sessions ✅ done 2026-10-29
+- [x] Grid encodings `runs` / `objects` / `hex` (`src/qahs/frame_encoding.py`); diff-based reflection prompts; compact JSON history; per-turn `token_usage`, with a Tokens column in the dashboard.
+- [x] Offline play of the games in `environment_files/` (`--arc-mode offline`), using the official engine with no key and no rate limit.
+- [x] Run journal, connection-drop detection, and restore by deterministic replay with frame checks; `qahs-arc --resume`; runner `/sessions` and `/resume` plus a dashboard button (`src/qahs/session.py`, `arc_agent.py`).
+- [x] Verified on the real engine (ls20, ar25, vc33): a lost response after the action was applied, and a kill + resume, both reproduce the uninterrupted run exactly.
+- Tests: `tests/test_frame_encoding.py`, `tests/test_session.py` (41 in total).
+
 ### Phase 1 — Formal hypothesis representation  → *Deliverable: formal finite representation*
 - New `src/qahs/hypothesis_space.py`, generalizing `factorized.py`:
   - `RuleVocabulary`: 6 `Dimension` registers, each with k_d ≤ 16 named options. Each option has an English description and a machine-checkable meaning.

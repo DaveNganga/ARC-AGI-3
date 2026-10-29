@@ -1,8 +1,8 @@
 # Backlog
 
-Plans that have been designed but not started. Pick these up after the current roadmap phase in [`IMPROVEMENTS.md`](IMPROVEMENTS.md).
+Plans that have been designed but not started. Items marked done are kept here for reference. Pick these up after the current roadmap phase in [`IMPROVEMENTS.md`](IMPROVEMENTS.md).
 
-## B1. Token-efficient grid encoding
+## B1. Token-efficient grid encoding — ✅ done 2026-10-29 (see README "Grid encoding and token use")
 
 What the ARC docs say:
 - **No image or OCR step is needed.** ARC-AGI-3 already returns frames as JSON integer grids: up to 64×64, values 0–15, origin top-left, (x, y) order (docs.arcprize.org/game-schema).
@@ -19,7 +19,7 @@ Planned work:
 - Replace the Python `repr` history dumps in prompts with compact JSON.
 - **Offline mode:** `Arcade(operation_mode=OperationMode.OFFLINE)` reads `environment_files/`. It needs no key, has no rate limit, runs at about 2,000 FPS, and suits development and token experiments. Add a `--arc-mode offline` option.
 
-## B2. Session management and safe resume
+## B2. Session management and safe resume — ✅ done 2026-10-29 (see README "Interrupted runs and dropped connections")
 
 What the ARC docs say:
 - The toolkit's `reset()` and `step()` **return `None` on failure** instead of raising an error.

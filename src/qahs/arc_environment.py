@@ -8,6 +8,17 @@ from typing import Any, Protocol
 from .arc_models import ArcActionCandidate, ArcObservation
 
 
+ARC_MODES = ("online", "offline")
+
+
+class TransientEnvironmentError(ConnectionError):
+    """The toolkit returned no frame: network failure, timeout, or server error.
+
+    The toolkit hides the cause and returns ``None``, so the action may or may not have been
+    applied on the server. Callers must restore state by replay instead of re-sending it.
+    """
+
+
 GAME_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{1,32})?$")
 
 
@@ -56,10 +67,23 @@ def _available_names(raw: Any, env: Any) -> tuple[str, ...]:
 
 
 class ArcSDKEnvironment:
-    """Thin adapter around the official ARC-AGI-3 Python toolkit."""
+    """Thin adapter around the official ARC-AGI-3 Python toolkit.
 
-    def __init__(self, game_id: str, seed: int = 0, recordings_dir: str | Path = "output/arc_recordings"):
+    ``mode="offline"`` plays the downloaded games in ``environments_dir`` locally: no API key,
+    no rate limit, and no network failures. ``mode="online"`` uses the ARC-AGI-3 service.
+    """
+
+    def __init__(
+        self,
+        game_id: str,
+        seed: int = 0,
+        recordings_dir: str | Path = "output/arc_recordings",
+        mode: str = "online",
+        environments_dir: str | Path = "environment_files",
+    ):
         game_id = validate_arc_game_id(game_id)
+        if mode not in ARC_MODES:
+            raise ValueError(f"ARC mode must be one of {ARC_MODES}")
         try:
             import arc_agi
         except ImportError as error:
@@ -67,17 +91,23 @@ class ArcSDKEnvironment:
 
         self.game_id = game_id
         self.seed = seed
+        self.mode = mode
         self._last: ArcObservation | None = None
-        arc_api_key = os.environ.get("ARC_API_KEY", "")
-        if not arc_api_key:
-            raise RuntimeError(
-                "Set ARC_API_KEY before using the live ARC-AGI-3 service. "
-                "The service returned HTTP 401 when anonymous access was verified."
+        if mode == "offline":
+            self.arcade = arc_agi.Arcade(
+                operation_mode=arc_agi.OperationMode.OFFLINE,
+                environments_dir=str(environments_dir),
+                recordings_dir=str(recordings_dir),
             )
-        self.arcade = arc_agi.Arcade(
-            arc_api_key=arc_api_key,
-            recordings_dir=str(recordings_dir),
-        )
+        else:
+            arc_api_key = os.environ.get("ARC_API_KEY", "")
+            if not arc_api_key:
+                raise RuntimeError("Set ARC_API_KEY before using the online ARC-AGI-3 service, or use offline mode.")
+            self.arcade = arc_agi.Arcade(
+                arc_api_key=arc_api_key,
+                operation_mode=arc_agi.OperationMode.ONLINE,
+                recordings_dir=str(recordings_dir),
+            )
         self.env = self.arcade.make(
             game_id,
             seed=seed,
@@ -90,7 +120,7 @@ class ArcSDKEnvironment:
 
     def _convert(self, raw: Any, event: str) -> ArcObservation:
         if raw is None:
-            raise RuntimeError("ARC-AGI-3 returned no observation")
+            raise TransientEnvironmentError("ARC-AGI-3 returned no observation (connection, timeout, or server error)")
         frame = _last_grid(getattr(raw, "frame", []))
         return ArcObservation(
             game_id=str(getattr(raw, "game_id", self.game_id)),
@@ -135,6 +165,9 @@ class DemoArcEnvironment:
     """Local key-free environment for verifying the comparison harness."""
 
     game_id = "demo-hidden-door"
+    # Test hook: total step number (across all instances) that simulates one dropped connection.
+    fault_at_step: int | None = None
+    _steps_taken = 0
 
     def __init__(self, seed: int = 0):
         self.seed = seed
@@ -167,6 +200,14 @@ class DemoArcEnvironment:
         return self._observation("reset")
 
     def step(self, candidate: ArcActionCandidate) -> ArcObservation:
+        DemoArcEnvironment._steps_taken += 1
+        if DemoArcEnvironment._steps_taken == DemoArcEnvironment.fault_at_step:
+            # Apply the action, then lose the response, like a timed-out request the server completed.
+            self._apply(candidate)
+            raise TransientEnvironmentError("simulated dropped connection")
+        return self._apply(candidate)
+
+    def _apply(self, candidate: ArcActionCandidate) -> ArcObservation:
         self.turn += 1
         if candidate.action_type == "ACTION1":
             self.door_open = True

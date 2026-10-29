@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
-from collections import Counter
 from dataclasses import asdict
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .arc_models import (
     ArcActionCandidate,
@@ -13,6 +13,7 @@ from .arc_models import (
     ArcProposal,
     ArcReflection,
 )
+from .frame_encoding import FRAME_FORMATS, encode_frame, frame_diff, runs_summary
 from .retry import call_with_retries
 
 
@@ -111,57 +112,54 @@ ARC_REFLECTION_SCHEMA: dict[str, Any] = {
 
 def frame_summary(frame: tuple[tuple[int, ...], ...]) -> str:
     """Represent a grid compactly while preserving coordinates and spatial runs."""
-    if not frame:
-        return "empty frame"
-    height, width = len(frame), len(frame[0])
-    counts = Counter(value for row in frame for value in row)
-    background = counts.most_common(1)[0][0]
-    color_summary = []
-    for value, count in sorted(counts.items()):
-        locations = [(x, y) for y, row in enumerate(frame) for x, cell in enumerate(row) if cell == value]
-        xs = [point[0] for point in locations]
-        ys = [point[1] for point in locations]
-        color_summary.append(
-            f"color {value}: count={count}, bounds=x[{min(xs)}..{max(xs)}],y[{min(ys)}..{max(ys)}]"
-        )
+    return runs_summary(frame)
 
-    rows = []
-    for y, row in enumerate(frame):
-        runs = []
-        start = 0
-        while start < width:
-            value = row[start]
-            end = start
-            while end + 1 < width and row[end + 1] == value:
-                end += 1
-            if value != background:
-                runs.append(f"x{start}" if start == end else f"x{start}-{end}" + f"={value}")
-                if start == end:
-                    runs[-1] += f"={value}"
-            start = end + 1
-        if runs:
-            rows.append(f"y{y}: " + ", ".join(runs))
-    return (
-        f"shape={height}x{width}; coordinates use x=column,y=row; inferred background={background}\n"
-        + "Color statistics:\n" + "\n".join(color_summary)
-        + "\nNon-background horizontal runs (exact coordinates):\n"
-        + ("\n".join(rows) if rows else "none")
-    )
+
+FRAME_FORMAT_NOTES = {
+    "runs": "The grid is given as color statistics plus every non-background horizontal run with exact x/y coordinates.",
+    "objects": "The grid is given as connected same-color objects with exact bounding boxes, cell counts, and shapes.",
+    "hex": "The grid is given exactly: one line per row y, one hex digit (0-f) per cell starting at x=0.",
+}
+
+HISTORY_FIELDS = ("turn", "action_signature", "changed_cells", "levels_delta", "result", "state", "next_focus")
+
+
+def compact_history(history: list[dict[str, Any]], limit: int) -> str:
+    """Recent evidence as compact JSON with only the fields the model needs."""
+    rows = [{key: item.get(key) for key in HISTORY_FIELDS} for item in history[-limit:]]
+    return json.dumps(rows, separators=(",", ":")) if rows else "none"
+
+
+def compact_json(value: Any) -> str:
+    return json.dumps(value, separators=(",", ":")) if value else "none"
 
 
 class OpenAIArcReasoner:
-    def __init__(self, caller: Any, attempts: int = 3, retry_delay: float = 2.0):
+    def __init__(self, caller: Any, attempts: int = 3, retry_delay: float = 2.0, frame_format: str = "runs"):
+        if frame_format not in FRAME_FORMATS:
+            raise ValueError(f"Unknown frame format: {frame_format}")
         self.caller = caller
         self.attempts = attempts
         self.retry_delay = retry_delay
+        self.frame_format = frame_format
         self.last_call_count = 0
         self.last_retry_count = 0
+        self.last_usage: dict[str, int] = {}
 
-    def _request(self, build: Any) -> Any:
+    def _request(self, prompt: str, schema: dict[str, Any], name: str, parse: Any) -> Any:
         """Request and parse together so malformed but schema-valid output is also retried."""
-        result, retries = call_with_retries(build, self.attempts, self.retry_delay)
+        usage = {"input_tokens": 0, "output_tokens": 0}
+
+        def attempt() -> Any:
+            payload = self.caller.call_json(prompt, schema, name)
+            for key, value in (getattr(self.caller, "last_usage", None) or {}).items():
+                usage[key] = usage.get(key, 0) + int(value)
+            return parse(payload)
+
+        result, retries = call_with_retries(attempt, self.attempts, self.retry_delay)
         self.last_retry_count = retries
         self.last_call_count = 1 + retries
+        self.last_usage = usage
         return result
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
@@ -169,7 +167,7 @@ class OpenAIArcReasoner:
         prompt = f"""You are controlling an unfamiliar ARC-AGI-3 game. No instructions reveal its goal.
 Infer possible world rules from the current grid and accumulated evidence. Return 2 to 8 competing hypotheses and 2 to 8 concrete action candidates. Each hypothesis must predict a short observable outcome for every candidate_id. Also recommend one candidate yourself; this recommendation is the LLM-only baseline.
 
-The grid description preserves exact x/y coordinates and non-background shapes. Reason spatially from those runs. Prefer actions that can distinguish hypotheses or produce level progress. Treat changed pixels as evidence, not as progress by itself. Do not repeat a click from the same frame state when it previously caused no change or only toggled the same pattern; propose a genuinely different test instead.
+{FRAME_FORMAT_NOTES[self.frame_format]} Reason spatially from those exact coordinates. Prefer actions that can distinguish hypotheses or produce level progress. Treat changed pixels as evidence, not as progress by itself. Do not repeat a click from the same frame state when it previously caused no change or only toggled the same pattern; propose a genuinely different test instead.
 
 Maintain the belief ledger across turns. Preserve supported explanations, lower confidence in contradicted explanations, and do not silently restore rejected ideas. Prefer a focused experiment that separates the leading hypotheses over random exploration. Every response must use contiguous IDs starting at 0.
 
@@ -179,18 +177,18 @@ Keep confidence, expected_progress, and risk between 0 and 1. Candidate IDs must
 
 Game state: {observation.state}; levels completed: {observation.levels_completed}; win levels: {observation.win_levels}
 Current grid:
-{frame_summary(observation.frame)}
+{encode_frame(observation.frame, self.frame_format)}
 
-Current belief ledger:
-{ledger}
+Current belief ledger (JSON):
+{compact_json(ledger)}
 
-Recent evidence:
-{history[-8:]}
+Recent evidence (JSON):
+{compact_history(history, 8)}
 """
-        return self._request(lambda: parse_proposal(
-            self.caller.call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal"),
-            observation.available_actions,
-        ))
+        return self._request(
+            prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal",
+            lambda payload: parse_proposal(payload, observation.available_actions),
+        )
 
     def reflect(
         self,
@@ -205,16 +203,17 @@ Recent evidence:
 
 Compare each hypothesis's prediction for the selected candidate with the actual observation. Mark it supported, weakened, rejected, or uncertain. Preserve stable IDs and statements when the underlying explanation is unchanged. You may introduce a genuinely new explanation only when the observation demands it, and the complete returned ledger must contain 2 to 8 beliefs with contiguous IDs starting at 0. Confidence must be between 0 and 1. Pixel change alone is not proof of progress; level completion and terminal state are stronger evidence.
 
-Previous ledger: {previous_ledger}
-Hypotheses tested: {[asdict(item) for item in proposal.hypotheses]}
-Selected action: {asdict(selected)}
-Before: state={before.state}, levels={before.levels_completed}\n{frame_summary(before.frame)}
-After: state={after.state}, levels={after.levels_completed}, event={after.event}\n{frame_summary(after.frame)}
-Recent evidence: {history[-6:]}
+Previous ledger (JSON): {compact_json(previous_ledger)}
+Hypotheses tested (JSON): {compact_json([asdict(item) for item in proposal.hypotheses])}
+Selected action (JSON): {compact_json(asdict(selected))}
+Before: state={before.state}, levels={before.levels_completed}
+{encode_frame(before.frame, self.frame_format)}
+After: state={after.state}, levels={after.levels_completed}, event={after.event}
+Changes from before to after:
+{frame_diff(before.frame, after.frame)}
+Recent evidence (JSON): {compact_history(history, 6)}
 """
-        return self._request(lambda: parse_reflection(
-            self.caller.call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection")
-        ))
+        return self._request(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection", parse_reflection)
 
 
 def parse_proposal(payload: dict[str, Any], available_actions: tuple[str, ...]) -> ArcProposal:
@@ -340,23 +339,43 @@ class DemoArcReasoner:
         return ArcReflection("Updated beliefs from the observed result.", after.event, beliefs, "Test the leading explanation.")
 
 
-class CachingArcReasoner:
-    """Reuse identical proposals across matched conditions for a fairer comparison."""
+def cache_key(payload: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
-    def __init__(self, reasoner: ArcReasoner):
+
+class CachingArcReasoner:
+    """Reuse identical proposals across matched conditions for a fairer comparison.
+
+    ``on_new_entry(kind, key, value)`` is called for every fresh model response so it can be
+    journaled; ``prime`` restores journaled responses on resume so no model call is repeated.
+    """
+
+    def __init__(self, reasoner: ArcReasoner, on_new_entry: Callable[[str, str, Any], None] | None = None):
         self.reasoner = reasoner
+        self.on_new_entry = on_new_entry
         self.cache: dict[str, ArcProposal] = {}
         self.reflection_cache: dict[str, ArcReflection] = {}
         self.last_call_count = 0
+        self.last_usage: dict[str, int] = {}
+
+    def prime(self, kind: str, key: str, value: ArcProposal | ArcReflection) -> None:
+        (self.cache if kind == "proposal" else self.reflection_cache)[key] = value  # type: ignore[index]
+
+    def _fresh(self, kind: str, key: str, value: Any) -> None:
+        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
+        self.last_usage = dict(getattr(self.reasoner, "last_usage", None) or {})
+        if self.on_new_entry:
+            self.on_new_entry(kind, key, value)
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
-        key = json.dumps({"observation": asdict(observation), "history": history}, sort_keys=True)
+        key = cache_key({"observation": asdict(observation), "history": history})
         if key in self.cache:
             self.last_call_count = 0
+            self.last_usage = {}
             return self.cache[key]
         proposal = self.reasoner.propose(observation, history)
-        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
         self.cache[key] = proposal
+        self._fresh("proposal", key, proposal)
         return proposal
 
     def reflect(
@@ -367,19 +386,20 @@ class CachingArcReasoner:
         selected: ArcActionCandidate,
         history: list[dict[str, Any]],
     ) -> ArcReflection:
-        key = json.dumps({
+        key = cache_key({
             "before": asdict(before),
             "after": asdict(after),
             "proposal": asdict(proposal),
             "selected": asdict(selected),
             "history": history,
-        }, sort_keys=True)
+        })
         if key in self.reflection_cache:
             self.last_call_count = 0
+            self.last_usage = {}
             return self.reflection_cache[key]
         reflection = self.reasoner.reflect(before, after, proposal, selected, history)
-        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
         self.reflection_cache[key] = reflection
+        self._fresh("reflection", key, reflection)
         return reflection
 
 

@@ -19,6 +19,7 @@ type Turn = {
   search_diagnostics?: { quantum_used?: boolean; shots?: number };
   reflection?: Reflection | null;
   model_calls?: number;
+  token_usage?: { input_tokens?: number; output_tokens?: number };
 };
 type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null; stop_reason?: string };
 type Run = {
@@ -40,6 +41,7 @@ const ARC_COLORS = [
   "#e53aa3", "#ff7fcc", "#e53b2c", "#2e5cb8", "#62a5ff", "#f5d442",
   "#f28c28", "#7f1d1d", "#35a853", "#7e57c2",
 ];
+const RUNNER = "http://127.0.0.1:8765";
 const MODE_COLORS: Record<string, string> = { LLM: "#55b6d9", Classical: "#efad4a", Quantum: "#36b3a7" };
 
 function episodes(run: Run): [string, Episode][] {
@@ -64,6 +66,10 @@ function changed(turn: Turn) {
 function usefulActions(episode: Episode) { return turns(episode).filter((turn) => changed(turn) > 0).length; }
 function overrides(episode: Episode) {
   return turns(episode).filter((turn) => turn.selected_candidate.candidate_id !== turn.proposal.recommended_candidate_id).length;
+}
+function tokens(episode: Episode) {
+  const total = turns(episode).reduce((sum, turn) => sum + Number(turn.token_usage?.input_tokens ?? 0) + Number(turn.token_usage?.output_tokens ?? 0), 0);
+  return total ? total.toLocaleString() : "—";
 }
 function modelCalls(episode: Episode) { return turns(episode).reduce((sum, turn) => sum + Number(turn.model_calls ?? 1), 0); }
 
@@ -125,10 +131,10 @@ function ResultsChart({ run }: { run: Run }) {
       </div>
       <div className="legend">{conditions.map(([label]) => <span key={label}><i style={{ background: MODE_COLORS[label] }} />{label}</span>)}</div>
       <div className="summary-table" role="table" aria-label="Computation summary">
-        <div className="summary-row summary-head"><span>Mode</span><span>LLM calls</span><span>Searches</span><span>Overrides</span><span>Time</span></div>
+        <div className="summary-row summary-head"><span>Mode</span><span>LLM calls</span><span>Tokens</span><span>Searches</span><span>Overrides</span><span>Time</span></div>
         {conditions.map(([label, episode]) => (
           <div className="summary-row" role="row" key={label}>
-            <strong>{label}</strong><span>{modelCalls(episode)}</span>
+            <strong>{label}</strong><span>{modelCalls(episode)}</span><span>{tokens(episode)}</span>
             <span>{episode.condition === "llm_only" ? 0 : turns(episode).length}</span>
             <span>{overrides(episode)}</span><span>{Number(episode.wall_seconds ?? 0).toFixed(1)}s</span>
           </div>
@@ -182,18 +188,27 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename: string) => Promi
   const [game, setGame] = useState("ls20");
   const [seed, setSeed] = useState(0);
   const [actions, setActions] = useState(8);
+  const [frameFormat, setFrameFormat] = useState("runs");
+  const [arcMode, setArcMode] = useState("offline");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
+  const [unfinished, setUnfinished] = useState<string[]>([]);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  const loadSessions = useCallback(() => {
+    fetch(`${RUNNER}/sessions`).then((response) => response.json())
+      .then((result: { unfinished?: string[] }) => setUnfinished(result.unfinished ?? []))
+      .catch(() => setUnfinished([]));
+  }, []);
+  useEffect(loadSessions, [loadSessions]);
+
+  async function call(path: string, body: object, pending: string) {
     setRunning(true);
-    setMessage("Running all three modes…");
+    setMessage(pending);
     try {
-      const response = await fetch("http://127.0.0.1:8765/run", {
+      const response = await fetch(`${RUNNER}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source, game, seed, max_steps: actions }),
+        body: JSON.stringify(body),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The experiment failed.");
@@ -203,7 +218,13 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename: string) => Promi
       setMessage(reason instanceof Error ? reason.message : "The experiment failed.");
     } finally {
       setRunning(false);
+      loadSessions();
     }
+  }
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    void call("/run", { source, game, seed, max_steps: actions, frame_format: frameFormat, arc_mode: arcMode }, "Running all three modes…");
   }
 
   return (
@@ -213,10 +234,13 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename: string) => Promi
         <form onSubmit={submit}>
           <label>Source<select value={source} onChange={(event) => setSource(event.target.value)} disabled={running}><option value="demo">Demo</option><option value="arc">ARC</option></select></label>
           <label>Game<input value={game} onChange={(event) => setGame(event.target.value)} disabled={running || source === "demo"} maxLength={40} /></label>
+          <label>Mode<select value={arcMode} onChange={(event) => setArcMode(event.target.value)} disabled={running || source === "demo"}><option value="offline">Offline</option><option value="online">Online</option></select></label>
+          <label>Grid<select value={frameFormat} onChange={(event) => setFrameFormat(event.target.value)} disabled={running || source === "demo"}><option value="runs">Runs</option><option value="objects">Objects</option><option value="hex">Hex</option></select></label>
           <label>Seed<input type="number" min="0" max="1000000" value={seed} onChange={(event) => setSeed(Number(event.target.value))} disabled={running} /></label>
           <label>Actions<input type="range" min="2" max="30" value={actions} onChange={(event) => setActions(Number(event.target.value))} disabled={running} /><output>{actions}</output></label>
           <button type="submit" disabled={running}>{running ? "Running…" : "Start"}</button>
         </form>
+        {unfinished.length > 0 && <button type="button" className="resume-button" disabled={running} onClick={() => void call("/resume", { run_id: unfinished[0] }, "Resuming interrupted run…")}>Resume {unfinished[0]}</button>}
         {message && <p className="run-message" aria-live="polite">{message}</p>}
         <small>Local only</small>
       </div>

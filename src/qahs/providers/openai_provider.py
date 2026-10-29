@@ -23,6 +23,7 @@ class OpenAIJSONCaller:
         # Only sent when set: some reasoning models reject an explicit temperature.
         temperature = os.environ.get("OPENAI_TEMPERATURE", "").strip()
         self.temperature = float(temperature) if temperature else None
+        self.last_usage: dict[str, int] = {}
 
     @property
     def settings(self) -> dict[str, Any]:
@@ -60,6 +61,11 @@ class OpenAIJSONCaller:
             },
             **self._sampling(),
         )
+        usage = getattr(response, "usage", None)
+        self.last_usage = {
+            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+        }
         text = response.output_text
         if not text:
             raise RuntimeError("The model returned no structured output")

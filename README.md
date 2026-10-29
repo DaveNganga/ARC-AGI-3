@@ -97,6 +97,45 @@ Raw working traces are saved under `output/arc_runs/` and are intentionally igno
 
 Every episode records a `stop_reason` (`success`, `game_over`, `budget_exhausted`, or `error`) so incomplete episodes can be excluded from analysis. Model requests are retried up to three times, including responses that cannot be parsed; environment actions are never retried because they may already have been applied. Comparisons rotate which condition runs first by `seed % 3` and record `condition_order`.
 
+### Offline games (no key, no rate limit)
+
+The downloaded games in `environment_files/` (ls20, ft09, ar25, vc33, lp85, r11l, s5i5) can be played locally with the official engine. This needs no `ARC_API_KEY`, has no rate limit, and cannot drop a connection. Use it for development:
+
+```bash
+.venv/bin/qahs-arc --source arc --arc-mode offline --game ar25 --condition compare --max-steps 10
+```
+
+Online mode (the default) is still required for official scorecards and shareable replays.
+
+### Grid encoding and token use
+
+ARC-AGI-3 returns frames as integer grids (up to 64×64, values 0–15), so no image or OCR step is involved. `--frame-format` chooses how the grid is written for the model:
+
+| Format | Content | Grid tokens on saved frames* |
+|---|---|---|
+| `runs` (default) | Color statistics + every non-background horizontal run | 938–1,782 |
+| `objects` | Connected same-color objects: color, bounding box, size, shape | 326–937 |
+| `hex` | Exact grid, one hex digit per cell | ~1,510 |
+
+\*Measured with the `o200k_base` tokenizer on one frame from each of five saved games.
+
+Reflection prompts now send the before-frame plus a diff of changed cells instead of two full frames. Past-turn evidence is sent as compact JSON instead of Python dumps; the current belief ledger is still sent in full. Each turn records `token_usage`, and the dashboard shows per-condition totals.
+
+### Interrupted runs and dropped connections
+
+Every run writes an append-only journal to `output/arc_sessions/<run_id>/journal.jsonl` (ignored by Git). A turn is committed only after the environment has confirmed the action and the reflection exists.
+
+- **Dropped connection:** the toolkit reports network failures as an empty response, and the action may still have been applied on the server. The run waits for connectivity with exponential backoff (`--max-wait`, default 900 s). It then rebuilds the game on a fresh session by replaying only committed actions, and checks every frame against the journal. The interrupted turn reuses its saved model response. If replay produces a different frame, the episode stops with `replay_divergence` instead of continuing in an unknown state.
+- **Process stopped** (Ctrl+C, crash, closed laptop): continue with
+
+  ```bash
+  .venv/bin/qahs-arc --resume latest      # or --resume <run_id>
+  ```
+
+  Resume reads every setting from the journal. Finished conditions are rebuilt without replaying. Saved model responses are reused, so no paid call is repeated. The final trace is written only when the run completes, and it records `resumed`, `replayed_actions`, and `connection_events`.
+- In **online** mode, replay sends real actions, so the ARC scorecard shows more actions than the agent decided. Research metrics count agent decisions only.
+- The local dashboard's run panel shows a **Resume** button when an unfinished run exists.
+
 ## Run the website
 
 ```bash
@@ -114,7 +153,7 @@ Open `http://localhost:3000`:
 
 - `/` — plain-language About page, research hypothesis, learning-loop infographic, and current architecture diagram.
 - `/results` — saved-run comparison dashboard and detailed turn traces.
-- The local Results page includes a run panel. It is hidden when the static site is hosted publicly. Only one run can execute at a time; a second request receives HTTP 409.
+- The local Results page includes a run panel with source, offline/online mode, grid format, seed, and action budget. It is hidden when the static site is hosted publicly. Only one run can execute at a time; a second request receives HTTP 409. Interrupted runs can be resumed from the panel.
 
 New traces include the post-action reflection inside each turn's details. Older traces remain readable but do not contain this field.
 

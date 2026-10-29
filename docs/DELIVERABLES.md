@@ -82,7 +82,7 @@ Short answers to each deliverable in [`TASK.md`](TASK.md). **Answer** gives the 
 - Scale up only after S1 and S2 match the exact classical results.
 
 **Status**
-- 26 tests pass: encoding, QUBO = Ising energies, QAOA, the 64-world episode, and Phase 0 robustness.
+- 41 tests pass: encoding, QUBO = Ising energies, QAOA, the 64-world episode, Phase 0 robustness, grid encodings, and session recovery.
 
 ## 7. Experimental comparison: LLM-only vs QAHS with identical inputs
 

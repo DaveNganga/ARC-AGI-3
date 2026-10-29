@@ -85,6 +85,7 @@ class ArcTurn:
     observation_after: ArcObservation
     reflection: ArcReflection | None = None
     model_calls: int = 1
+    token_usage: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -100,6 +101,9 @@ class ArcEpisodeTrace:
     error_traceback: str | None = None
     stop_reason: str = ""
     harness_version: str = HARNESS_VERSION
+    resumed: bool = False
+    replayed_actions: int = 0
+    connection_events: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -121,3 +125,34 @@ class ArcComparisonTrace:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def candidate_from_dict(data: dict[str, Any]) -> ArcActionCandidate:
+    return ArcActionCandidate(**data)
+
+
+def observation_from_dict(data: dict[str, Any]) -> ArcObservation:
+    return ArcObservation(**{
+        **data,
+        "available_actions": tuple(data["available_actions"]),
+        "frame": tuple(tuple(row) for row in data["frame"]),
+    })
+
+
+def proposal_from_dict(data: dict[str, Any]) -> ArcProposal:
+    return ArcProposal(
+        summary=data["summary"],
+        hypotheses=tuple(ArcHypothesis(**item) for item in data["hypotheses"]),
+        action_candidates=tuple(candidate_from_dict(item) for item in data["action_candidates"]),
+        recommended_candidate_id=data["recommended_candidate_id"],
+        recommendation_reason=data["recommendation_reason"],
+    )
+
+
+def reflection_from_dict(data: dict[str, Any]) -> ArcReflection:
+    return ArcReflection(
+        summary=data["summary"],
+        observed_effect=data["observed_effect"],
+        beliefs=tuple(ArcBelief(**item) for item in data["beliefs"]),
+        next_focus=data["next_focus"],
+    )

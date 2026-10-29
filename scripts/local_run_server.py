@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
 PORT = 8765
 GAME_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+RUN_ID = re.compile(r"^\d{8}T\d{6}Z_[A-Za-z0-9-]{1,40}$")
+SESSIONS = ROOT / "output" / "arc_sessions"
 ALLOWED_ORIGINS = re.compile(
     r"^https?://(?:localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+$"
 )
@@ -31,7 +33,7 @@ class BusyError(PublicError):
     pass
 
 
-def validate(payload: dict) -> tuple[str, str, int, int]:
+def validate(payload: dict) -> tuple[str, str, int, int, str, str]:
     source = str(payload.get("source", "demo"))
     if source not in {"demo", "arc"}:
         raise PublicError("Choose Demo or ARC.")
@@ -47,34 +49,63 @@ def validate(payload: dict) -> tuple[str, str, int, int]:
         raise PublicError("Seed must be between 0 and 1,000,000.")
     if not 2 <= steps <= 30:
         raise PublicError("Actions must be between 2 and 30.")
+    frame_format = str(payload.get("frame_format", "runs"))
+    if frame_format not in {"runs", "objects", "hex"}:
+        raise PublicError("Choose a frame format: runs, objects, or hex.")
+    arc_mode = str(payload.get("arc_mode", "online"))
+    if arc_mode not in {"online", "offline"}:
+        raise PublicError("Choose online or offline ARC mode.")
     if source == "arc":
-        if not os.environ.get("ARC_API_KEY"):
-            raise PublicError("ARC_API_KEY is not available in this terminal.")
+        if arc_mode == "online" and not os.environ.get("ARC_API_KEY"):
+            raise PublicError("ARC_API_KEY is not available in this terminal. Use offline mode or set the key.")
         if not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL"):
             raise PublicError("OpenAI credentials are not available in this terminal.")
-    return source, game, seed, steps
+    return source, game, seed, steps, frame_format, arc_mode
+
+
+def unfinished_sessions() -> list[str]:
+    """Interrupted runs that can be resumed, newest first."""
+    if not SESSIONS.is_dir():
+        return []
+    runs = []
+    for journal in SESSIONS.glob("*/journal.jsonl"):
+        if '"event":"run_finished"' not in journal.read_text(encoding="utf-8"):
+            runs.append(journal.parent.name)
+    return sorted(runs, reverse=True)
 
 
 def run_experiment(payload: dict) -> dict:
-    source, game, seed, steps = validate(payload)
-    if not RUN_LOCK.acquire(blocking=False):
-        raise BusyError("A run is already in progress. Wait for it to finish.")
-    try:
-        return _run_locked(source, game, seed, steps)
-    finally:
-        RUN_LOCK.release()
-
-
-def _run_locked(source: str, game: str, seed: int, steps: int) -> dict:
-    before = set((ROOT / "output" / "arc_runs").glob("*.json"))
-    command = [
-        str(ROOT / ".venv" / "bin" / "qahs-arc"),
+    source, game, seed, steps, frame_format, arc_mode = validate(payload)
+    return _locked([
         "--source", source,
         "--game", game,
         "--condition", "compare",
         "--seed", str(seed),
         "--max-steps", str(steps),
-    ]
+        "--frame-format", frame_format,
+        "--arc-mode", arc_mode,
+    ])
+
+
+def resume_experiment(payload: dict) -> dict:
+    run_id = str(payload.get("run_id", "")).strip()
+    if not RUN_ID.fullmatch(run_id) or run_id not in unfinished_sessions():
+        raise PublicError("Choose an unfinished run to resume.")
+    return _locked(["--resume", run_id])
+
+
+def _locked(arguments: list[str]) -> dict:
+    if not RUN_LOCK.acquire(blocking=False):
+        raise BusyError("A run is already in progress. Wait for it to finish.")
+    try:
+        return _run_locked(arguments)
+    finally:
+        RUN_LOCK.release()
+
+
+def _run_locked(arguments: list[str]) -> dict:
+    before = set((ROOT / "output" / "arc_runs").glob("*.json"))
+    command = [str(ROOT / ".venv" / "bin" / "qahs-arc"), *arguments]
     completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=3600)
     if completed.returncode:
         # Details stay in this local terminal; the browser only receives a generic message.
@@ -122,17 +153,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", self.headers["Origin"])
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
 
+    def do_GET(self) -> None:
+        if self.path != "/sessions" or not self._origin():
+            self._respond(404, {"error": "Not found."})
+            return
+        self._respond(200, {"unfinished": unfinished_sessions(), "busy": RUN_LOCK.locked()})
+
     def do_POST(self) -> None:
-        if self.path != "/run" or not self._origin():
+        handlers = {"/run": run_experiment, "/resume": resume_experiment}
+        if self.path not in handlers or not self._origin():
             self._respond(404, {"error": "Not found."})
             return
         try:
             length = min(int(self.headers.get("Content-Length", "0")), 4096)
             payload = json.loads(self.rfile.read(length) or b"{}")
-            self._respond(200, run_experiment(payload))
+            self._respond(200, handlers[self.path](payload))
         except BusyError as error:
             self._respond(409, {"error": str(error)})
         except PublicError as error:

@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 output/runs/*.json
 output/arc_runs/*.json
+output/arc_sessions/
 recordings/
 output/arc_recordings/
 .env

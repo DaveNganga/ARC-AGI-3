@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,7 +19,15 @@ ALLOWED_ORIGINS = re.compile(
 )
 
 
+# One run at a time: overlapping runs share API quotas and output folders.
+RUN_LOCK = threading.Lock()
+
+
 class PublicError(ValueError):
+    pass
+
+
+class BusyError(PublicError):
     pass
 
 
@@ -48,6 +57,15 @@ def validate(payload: dict) -> tuple[str, str, int, int]:
 
 def run_experiment(payload: dict) -> dict:
     source, game, seed, steps = validate(payload)
+    if not RUN_LOCK.acquire(blocking=False):
+        raise BusyError("A run is already in progress. Wait for it to finish.")
+    try:
+        return _run_locked(source, game, seed, steps)
+    finally:
+        RUN_LOCK.release()
+
+
+def _run_locked(source: str, game: str, seed: int, steps: int) -> dict:
     before = set((ROOT / "output" / "arc_runs").glob("*.json"))
     command = [
         str(ROOT / ".venv" / "bin" / "qahs-arc"),
@@ -59,6 +77,9 @@ def run_experiment(payload: dict) -> dict:
     ]
     completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=3600)
     if completed.returncode:
+        # Details stay in this local terminal; the browser only receives a generic message.
+        tail = "\n".join(completed.stderr.splitlines()[-40:])
+        print(f"qahs-arc exited with code {completed.returncode}:\n{tail}", file=sys.stderr, flush=True)
         raise PublicError("The experiment failed. Check the local terminal for details.")
     subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "export_dashboard_runs.py")],
@@ -112,6 +133,8 @@ class Handler(BaseHTTPRequestHandler):
             length = min(int(self.headers.get("Content-Length", "0")), 4096)
             payload = json.loads(self.rfile.read(length) or b"{}")
             self._respond(200, run_experiment(payload))
+        except BusyError as error:
+            self._respond(409, {"error": str(error)})
         except PublicError as error:
             self._respond(400, {"error": str(error)})
         except (json.JSONDecodeError, TypeError):

@@ -13,6 +13,7 @@ from .arc_models import (
     ArcProposal,
     ArcReflection,
 )
+from .retry import call_with_retries
 
 
 class ArcReasoner(Protocol):
@@ -149,12 +150,21 @@ def frame_summary(frame: tuple[tuple[int, ...], ...]) -> str:
 
 
 class OpenAIArcReasoner:
-    def __init__(self, caller: Any):
+    def __init__(self, caller: Any, attempts: int = 3, retry_delay: float = 2.0):
         self.caller = caller
+        self.attempts = attempts
+        self.retry_delay = retry_delay
         self.last_call_count = 0
+        self.last_retry_count = 0
+
+    def _request(self, build: Any) -> Any:
+        """Request and parse together so malformed but schema-valid output is also retried."""
+        result, retries = call_with_retries(build, self.attempts, self.retry_delay)
+        self.last_retry_count = retries
+        self.last_call_count = 1 + retries
+        return result
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
-        self.last_call_count = 1
         ledger = history[-1].get("belief_ledger", []) if history else []
         prompt = f"""You are controlling an unfamiliar ARC-AGI-3 game. No instructions reveal its goal.
 Infer possible world rules from the current grid and accumulated evidence. Return 2 to 8 competing hypotheses and 2 to 8 concrete action candidates. Each hypothesis must predict a short observable outcome for every candidate_id. Also recommend one candidate yourself; this recommendation is the LLM-only baseline.
@@ -177,8 +187,10 @@ Current belief ledger:
 Recent evidence:
 {history[-8:]}
 """
-        payload = self.caller.call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal")
-        return parse_proposal(payload, observation.available_actions)
+        return self._request(lambda: parse_proposal(
+            self.caller.call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal"),
+            observation.available_actions,
+        ))
 
     def reflect(
         self,
@@ -188,7 +200,6 @@ Recent evidence:
         selected: ArcActionCandidate,
         history: list[dict[str, Any]],
     ) -> ArcReflection:
-        self.last_call_count = 1
         previous_ledger = history[-1].get("belief_ledger", []) if history else []
         prompt = f"""Act as an evidence reviewer for an unfamiliar ARC-AGI-3 game. An action was just taken. Update the persistent belief ledger; do not choose the next action yet.
 
@@ -201,8 +212,9 @@ Before: state={before.state}, levels={before.levels_completed}\n{frame_summary(b
 After: state={after.state}, levels={after.levels_completed}, event={after.event}\n{frame_summary(after.frame)}
 Recent evidence: {history[-6:]}
 """
-        payload = self.caller.call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection")
-        return parse_reflection(payload)
+        return self._request(lambda: parse_reflection(
+            self.caller.call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection")
+        ))
 
 
 def parse_proposal(payload: dict[str, Any], available_actions: tuple[str, ...]) -> ArcProposal:

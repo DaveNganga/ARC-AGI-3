@@ -5,7 +5,7 @@ Use this checklist in order. The first two sections test the software you alread
 ## 1. Confirm the current code works
 
 - [ ] From the `QAHS-Prototype` folder, run `PYTHONPATH=src python3 -m unittest discover -s tests -v`.
-- [ ] Confirm all nine tests pass.
+- [ ] Confirm all tests pass.
 - [ ] Run `PYTHONPATH=src python3 -m qahs.cli --backend classical --hidden-rule red_is_switch --no-save`.
 - [ ] Run `PYTHONPATH=src python3 -m qahs.cli --backend qaoa --hidden-rule red_is_switch --no-save`.
 - [ ] Confirm both runs choose red first, observe that the door opens, then choose green.
@@ -44,7 +44,7 @@ Use this checklist in order. The first two sections test the software you alread
 
 - [ ] Install the optional dependency with `python3 -m pip install -e '.[llm]'`.
 - [ ] Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the shell. Never store the key in the repository.
-- [ ] Wire `OpenAIJSONCaller` into the experiment runner. It is present but is not currently connected to the command line, dashboard, or 64-world experiment.
+- [x] Wire `OpenAIJSONCaller` into the experiment runner. It is used by `qahs-arc --source arc` and the local dashboard runner; the 64-world experiment does not use an LLM.
 - [ ] Freeze the prompt and JSON schema before held-out testing.
 - [ ] Log the model's proposed hypotheses and actions for every turn.
 - [ ] Reject or repair malformed output consistently across all conditions.

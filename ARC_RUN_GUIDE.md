@@ -2,11 +2,9 @@
 
 ## 1. Open the project
 
-```bash
-cd "/home/daven/Documents/MSSI/Critical Infrastructure Protection/Final Project/QAHS-Prototype"
-```
+Open a terminal in the repository root (the folder that contains `pyproject.toml`).
 
-The `.venv` environment is already installed on this computer. To recreate it later:
+If `.venv` does not exist yet, create it:
 
 ```bash
 bash setup_arc.sh
@@ -23,9 +21,10 @@ Open `http://127.0.0.1:3000`. The Next.js dashboard loads the newest exported ru
 
 Expected demonstration result:
 
-- Without QAHS: success in three actions.
-- With QAHS/QAOA: success in two actions.
-- Both tabs show grids, model hypotheses, action candidates, QAHS scores, selected actions, and search diagnostics.
+- LLM only: success in three actions.
+- Classical QAHS: success in two actions.
+- Quantum (QAOA) QAHS: success in two actions.
+- Every condition shows grids, model hypotheses, action candidates, QAHS scores, selected actions, and search diagnostics.
 
 This is a harness check created to make the difference visible. It is not research evidence.
 

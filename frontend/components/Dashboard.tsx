@@ -20,7 +20,7 @@ type Turn = {
   reflection?: Reflection | null;
   model_calls?: number;
 };
-type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null };
+type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null; stop_reason?: string };
 type Run = {
   filename: string;
   source?: string;
@@ -28,6 +28,7 @@ type Run = {
   seed?: number;
   action_budget?: number;
   model?: string;
+  harness_version?: string;
   without_qahs: Episode;
   with_classical?: Episode;
   with_qahs: Episode;
@@ -146,7 +147,7 @@ function Grid({ frame }: { frame?: Frame }) {
 function EpisodeDetails({ label, episode }: { label: string; episode: Episode }) {
   return (
     <div className="episode">
-      <div className="episode-stats"><span>{episode.success ? "Solved" : "Unsolved"}</span><span>{levels(episode)} levels</span><span>{turns(episode).length} actions</span></div>
+      <div className="episode-stats"><span>{episode.success ? "Solved" : "Unsolved"}</span><span>{levels(episode)} levels</span><span>{turns(episode).length} actions</span>{episode.stop_reason && <span>Stopped: {episode.stop_reason.replace("_", " ")}</span>}</div>
       {episode.error && <p className="error">Run failed; internal details omitted.</p>}
       {turns(episode).map((turn) => (
         <details key={turn.turn}>
@@ -264,6 +265,7 @@ export default function Dashboard() {
         {manifest.length > 0 && <label className="run-select"><span className="sr-only">Saved experiment</span><select value={filename} onChange={(event) => setFilename(event.target.value)} aria-label="Saved experiment">{manifest.map((item) => <option value={item.filename} key={item.filename}>{item.label}</option>)}</select></label>}
         {error && <p className="error">{error}</p>}
         {!run && !error && <p className="loading">Loading experiment…</p>}
+        {run && !run.harness_version && !run.with_classical && <p className="legacy-note">Legacy harness run: recorded before the current reasoning loop. Do not pool it with newer runs.</p>}
         {run && <><SetupMap run={run} /><ResultsChart run={run} /><Details run={run} /></>}
         <footer>{selectedLabel}</footer>
       </main>

@@ -20,6 +20,16 @@ class OpenAIJSONCaller:
         except ImportError as error:
             raise RuntimeError("Install the optional LLM dependency with: pip install -e '.[llm]'") from error
         self.client = OpenAI(api_key=api_key)
+        # Only sent when set: some reasoning models reject an explicit temperature.
+        temperature = os.environ.get("OPENAI_TEMPERATURE", "").strip()
+        self.temperature = float(temperature) if temperature else None
+
+    @property
+    def settings(self) -> dict[str, Any]:
+        return {"model": self.model, "temperature": self.temperature}
+
+    def _sampling(self) -> dict[str, Any]:
+        return {} if self.temperature is None else {"temperature": self.temperature}
 
     def __call__(self, prompt: str) -> str:
         response = self.client.responses.create(
@@ -28,6 +38,7 @@ class OpenAIJSONCaller:
                 "Return only valid JSON matching the requested schema. "
                 "Do not include Markdown fences.\n\n" + prompt
             ),
+            **self._sampling(),
         )
         text = response.output_text
         if not text:
@@ -47,6 +58,7 @@ class OpenAIJSONCaller:
                     "schema": schema,
                 }
             },
+            **self._sampling(),
         )
         text = response.output_text
         if not text:

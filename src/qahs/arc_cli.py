@@ -33,13 +33,13 @@ def main() -> None:
     if args.condition == "compare":
         trace = run_arc_comparison(environment_factory, reasoner_factory, args.source, game_id, args.seed, args.max_steps)
         summary = {
-            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
-            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
-            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
+            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "stop_reason": trace.without_qahs.stop_reason, "error": trace.without_qahs.error},
+            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "stop_reason": trace.with_classical.stop_reason, "error": trace.with_classical.error},
+            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "stop_reason": trace.with_qahs.stop_reason, "error": trace.with_qahs.error},
         }
     else:
         trace = run_arc_episode(environment_factory(), reasoner_factory(), args.condition, args.source, args.seed, args.max_steps)
-        summary = {"success": trace.success, "actions": len(trace.turns), "error": trace.error}
+        summary = {"success": trace.success, "actions": len(trace.turns), "stop_reason": trace.stop_reason, "error": trace.error}
 
     path = save_arc_trace(trace, args.output_dir)
     print(json.dumps(summary, indent=2))

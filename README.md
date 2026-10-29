@@ -10,6 +10,8 @@ The project compares three decision methods while holding the game, seed, action
 
 The comparison asks whether changing the selection method improves progress, action efficiency, exploration, or computational cost. It does not assume that the quantum condition will win.
 
+The Group 2 assignment is in [`docs/TASK.md`](docs/TASK.md). For the condensed project concept and current evidence, see [`docs/CORE.md`](docs/CORE.md). The gap analysis and phased roadmap are in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md), short answers to each deliverable in [`docs/DELIVERABLES.md`](docs/DELIVERABLES.md), and planned-but-unstarted work in [`docs/BACKLOG.md`](docs/BACKLOG.md).
+
 ## Current reasoning loop
 
 Each condition uses the same six-stage loop:
@@ -54,6 +56,8 @@ Keep credentials in shell environment variables. Never place real keys in `.env.
 export OPENAI_API_KEY='your-openai-key'
 export OPENAI_MODEL='a-structured-output-capable-model'
 export ARC_API_KEY='your-arc-api-key'
+# Optional: fix sampling temperature (omit for models that reject it). Recorded in each trace.
+export OPENAI_TEMPERATURE='0'
 ```
 
 `.gitignore` excludes `.env`, the virtual environment, raw run JSON, recordings, frontend build output, and installed Node packages.
@@ -89,7 +93,9 @@ Supported conditions are:
 
 An uncached comparison can make up to `conditions × actions × 2` model calls because every action may require one proposal and one reflection. For example, three 20-action conditions can require up to 120 calls. Shared cache hits can reduce that number.
 
-Raw working traces are saved under `output/arc_runs/` and are intentionally ignored by Git.
+Raw working traces are saved under `output/arc_runs/` and are intentionally ignored by Git. They keep full error messages and tracebacks; the export step redacts these before publishing.
+
+Every episode records a `stop_reason` (`success`, `game_over`, `budget_exhausted`, or `error`) so incomplete episodes can be excluded from analysis. Model requests are retried up to three times, including responses that cannot be parsed; environment actions are never retried because they may already have been applied. Comparisons rotate which condition runs first by `seed % 3` and record `condition_order`.
 
 ## Run the website
 
@@ -108,7 +114,7 @@ Open `http://localhost:3000`:
 
 - `/` — plain-language About page, research hypothesis, learning-loop infographic, and current architecture diagram.
 - `/results` — saved-run comparison dashboard and detailed turn traces.
-- The local Results page includes a run panel. It is hidden when the static site is hosted publicly.
+- The local Results page includes a run panel. It is hidden when the static site is hosted publicly. Only one run can execute at a time; a second request receives HTTP 409.
 
 New traces include the post-action reflection inside each turn's details. Older traces remain readable but do not contain this field.
 
@@ -123,7 +129,7 @@ git commit -m "Add latest ARC-AGI-3 experiment runs"
 git push origin main
 ```
 
-Only the sanitized files under `frontend/public/runs/` are published. API keys, raw traces, and local recordings are not sent to the frontend. A connected Vercel project rebuilds automatically after a push to `main`.
+The export merges new local runs into `frontend/public/runs/`; it never deletes published runs, and it does nothing when `output/arc_runs/` is empty (for example on a fresh clone). Only the sanitized files under `frontend/public/runs/` are published. API keys, raw traces, and local recordings are not sent to the frontend. A connected Vercel project rebuilds automatically after a push to `main`.
 
 Vercel should import `frontend` as a single Next.js project. The Python experiment service remains local and is not deployed.
 

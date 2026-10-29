@@ -5,6 +5,7 @@ project_root="$(cd "$(dirname "$0")" && pwd)"
 next_lock="$project_root/frontend/.next/dev/lock"
 runner_pid=""
 next_pid=""
+use_group=0
 
 stop_previous_next() {
   [[ -f "$next_lock" ]] || return 0
@@ -28,7 +29,15 @@ stop_previous_next() {
 }
 
 cleanup() {
-  [[ -z "$next_pid" ]] || kill -- "-$next_pid" 2>/dev/null || true
+  if [[ -n "$next_pid" ]]; then
+    if (( use_group )); then
+      kill -- "-$next_pid" 2>/dev/null || true
+    else
+      # Without setsid (macOS), stop the launcher and the Next.js workers it spawned.
+      pkill -P "$next_pid" 2>/dev/null || true
+      kill "$next_pid" 2>/dev/null || true
+    fi
+  fi
   [[ -z "$runner_pid" ]] || kill "$runner_pid" 2>/dev/null || true
 }
 
@@ -40,6 +49,11 @@ stop_previous_next
 runner_pid=$!
 
 cd "$project_root/frontend"
-setsid ./node_modules/.bin/next dev &
+if command -v setsid >/dev/null 2>&1; then
+  setsid ./node_modules/.bin/next dev &
+  use_group=1
+else
+  ./node_modules/.bin/next dev &
+fi
 next_pid=$!
 wait "$next_pid"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import traceback
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -121,8 +122,17 @@ def run_arc_episode(
             if observation.terminal:
                 break
         trace.success = observation.success
+        if observation.success:
+            trace.stop_reason = "success"
+        elif observation.terminal:
+            trace.stop_reason = "game_over"
+        else:
+            trace.stop_reason = "budget_exhausted"
     except Exception as error:
-        trace.error = f"{type(error).__name__}: run failed; internal details omitted"
+        # Private traces keep full details; export_dashboard_runs.py redacts them before publishing.
+        trace.error = f"{type(error).__name__}: {error}"
+        trace.error_traceback = traceback.format_exc()
+        trace.stop_reason = "error"
     trace.wall_seconds = perf_counter() - started
     return trace
 
@@ -135,14 +145,22 @@ def run_arc_comparison(
     seed: int = 0,
     max_steps: int = 12,
 ) -> ArcComparisonTrace:
-    shared_reasoner = CachingArcReasoner(reasoner_factory())
-    without = run_arc_episode(environment_factory(), shared_reasoner, "llm_only", source, seed, max_steps)
-    with_classical = run_arc_episode(environment_factory(), shared_reasoner, "qahs_classical", source, seed, max_steps)
-    with_qahs = run_arc_episode(environment_factory(), shared_reasoner, "qahs_qaoa", source, seed, max_steps)
+    reasoner = reasoner_factory()
+    shared_reasoner = CachingArcReasoner(reasoner)
+    # Rotate which condition fills the shared cache first so no condition is always first.
+    shift = seed % len(CONDITIONS)
+    order = list(CONDITIONS[shift:] + CONDITIONS[:shift])
+    episodes = {
+        condition: run_arc_episode(environment_factory(), shared_reasoner, condition, source, seed, max_steps)
+        for condition in order
+    }
     return ArcComparisonTrace(
-        source, game_id, seed, without, with_classical, with_qahs,
+        source, game_id, seed,
+        episodes["llm_only"], episodes["qahs_classical"], episodes["qahs_qaoa"],
         action_budget=max_steps,
         model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
+        model_settings=dict(getattr(getattr(reasoner, "caller", None), "settings", {}) or {}),
+        condition_order=order,
     )
 
 

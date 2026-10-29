@@ -4,6 +4,10 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+# Bump when the reasoning loop changes in a way that makes runs incomparable.
+HARNESS_VERSION = "2"
+
+
 @dataclass(frozen=True)
 class ArcActionCandidate:
     candidate_id: str
@@ -93,6 +97,9 @@ class ArcEpisodeTrace:
     success: bool = False
     wall_seconds: float = 0.0
     error: str | None = None
+    error_traceback: str | None = None
+    stop_reason: str = ""
+    harness_version: str = HARNESS_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -108,6 +115,9 @@ class ArcComparisonTrace:
     with_qahs: ArcEpisodeTrace
     action_budget: int = 0
     model: str | None = None
+    model_settings: dict[str, Any] = field(default_factory=dict)
+    condition_order: list[str] = field(default_factory=list)
+    harness_version: str = HARNESS_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

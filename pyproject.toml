@@ -11,6 +11,7 @@ dependencies = ["numpy>=1.26", "scipy>=1.11"]
 
 [project.optional-dependencies]
 llm = ["openai>=1.0"]
+anthropic = ["anthropic>=1.0"]
 arc = ["arc-agi>=0.9.9"]
 full = ["openai>=1.0", "arc-agi>=0.9.9"]
 

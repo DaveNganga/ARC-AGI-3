@@ -128,14 +128,16 @@ def run_arc_comparison(
     seed: int = 0,
     max_steps: int = 12,
 ) -> ArcComparisonTrace:
-    shared_reasoner = CachingArcReasoner(reasoner_factory())
+    reasoner = reasoner_factory()
+    shared_reasoner = CachingArcReasoner(reasoner)
     without = run_arc_episode(environment_factory(), shared_reasoner, "llm_only", source, seed, max_steps)
     with_classical = run_arc_episode(environment_factory(), shared_reasoner, "qahs_classical", source, seed, max_steps)
     with_qahs = run_arc_episode(environment_factory(), shared_reasoner, "qahs_qaoa", source, seed, max_steps)
     return ArcComparisonTrace(
         source, game_id, seed, without, with_classical, with_qahs,
         action_budget=max_steps,
-        model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
+        model=(getattr(getattr(reasoner, "caller", None), "model", None) or os.environ.get("OPENAI_MODEL"))
+        if source == "arc" else "Deterministic local reasoner",
     )
 
 

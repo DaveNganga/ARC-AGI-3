@@ -7,7 +7,10 @@ from pathlib import Path
 from .arc_agent import run_arc_comparison, run_arc_episode, save_arc_trace
 from .arc_environment import ArcSDKEnvironment, DemoArcEnvironment
 from .arc_reasoner import DemoArcReasoner, OpenAIArcReasoner
+from .providers.anthropic_provider import AnthropicJSONCaller
 from .providers.openai_provider import OpenAIJSONCaller
+
+PROVIDERS = {"openai": OpenAIJSONCaller, "anthropic": AnthropicJSONCaller}
 
 
 def main() -> None:
@@ -17,6 +20,7 @@ def main() -> None:
     parser.add_argument("--condition", choices=("compare", "llm_only", "qahs_classical", "qahs_qaoa"), default="compare")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-steps", type=int, default=12)
+    parser.add_argument("--provider", choices=tuple(PROVIDERS), default="openai", help="LLM provider for arc runs")
     parser.add_argument("--output-dir", default="output/arc_runs")
     args = parser.parse_args()
 
@@ -28,7 +32,7 @@ def main() -> None:
         game_id = args.game
         recordings = Path("output/arc_recordings")
         environment_factory = lambda: ArcSDKEnvironment(args.game, args.seed, recordings)
-        reasoner_factory = lambda: OpenAIArcReasoner(OpenAIJSONCaller())
+        reasoner_factory = lambda: OpenAIArcReasoner(PROVIDERS[args.provider]())
 
     if args.condition == "compare":
         trace = run_arc_comparison(environment_factory, reasoner_factory, args.source, game_id, args.seed, args.max_steps)

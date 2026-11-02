@@ -1,5 +1,9 @@
 [
   {
+    "filename": "20261102T063610Z_s5i5_comparison.json",
+    "label": "s5i5 \u00b7 11/02 06:36 \u00b7 claude-opus-5-5"
+  },
+  {
     "filename": "20261102T063601Z_r11l_comparison.json",
     "label": "r11l \u00b7 11/02 06:36 \u00b7 claude-opus-5-5"
   },

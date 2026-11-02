@@ -1,39 +1,43 @@
 [
   {
+    "filename": "20261102T051051Z_ar25_comparison.json",
+    "label": "ar25 \u00b7 11/02 05:10 \u00b7 claude-opus-5-5"
+  },
+  {
     "filename": "20261029T184951Z_s5i5_comparison.json",
-    "label": "s5i5 \u00b7 10/29 18:49"
+    "label": "s5i5 \u00b7 10/29 18:49 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T184944Z_r11l_comparison.json",
-    "label": "r11l \u00b7 10/29 18:49"
+    "label": "r11l \u00b7 10/29 18:49 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T182439Z_ar25_comparison.json",
-    "label": "ar25 \u00b7 10/29 18:24"
+    "label": "ar25 \u00b7 10/29 18:24 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T181132Z_vc33_comparison.json",
-    "label": "vc33 \u00b7 10/29 18:11"
+    "label": "vc33 \u00b7 10/29 18:11 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T173922Z_s5i5_comparison.json",
-    "label": "s5i5 \u00b7 10/29 17:39"
+    "label": "s5i5 \u00b7 10/29 17:39 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T170909Z_r11l_comparison.json",
-    "label": "r11l \u00b7 10/29 17:09"
+    "label": "r11l \u00b7 10/29 17:09 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T163642Z_lp85_comparison.json",
-    "label": "lp85 \u00b7 10/29 16:36"
+    "label": "lp85 \u00b7 10/29 16:36 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T155621Z_vc33_comparison.json",
-    "label": "vc33 \u00b7 10/29 15:56"
+    "label": "vc33 \u00b7 10/29 15:56 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T152831Z_ar25_comparison.json",
-    "label": "ar25 \u00b7 10/29 15:28"
+    "label": "ar25 \u00b7 10/29 15:28 \u00b7 gpt-6-luna"
   },
   {
     "filename": "20261029T055826Z_ft09_comparison.json",

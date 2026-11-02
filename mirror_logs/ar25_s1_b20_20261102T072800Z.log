@@ -1,0 +1,357 @@
+INFO:arc_agi.scorecard:Initialized ScorecardManager with idle_for=0:15:00 and max_open_for=3 days, 0:00:00
+2026-11-02 07:28:03 | ERROR | Failed to fetch environments from API (https://three.arcprize.org/api/games): HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 246, in _fetch_from_api
+    response = requests.get(url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:28:03 | INFO | Created new scorecard: b8357ac5-2565-42e4-bb86-8c2d3e14cb85
+2026-11-02 07:28:03 | ERROR | Request error while fetching metadata for game ar25: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 820, in _fetch_metadata
+    response = requests.get(metadata_url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:28:03 | INFO | Found latest version of ar25: ar25-0c556536 (downloaded: 2026-10-29 15:27:47.460920+00:00)
+2026-11-02 07:28:03 | INFO | Recording to output/arc_recordings/b8357ac5-2565-42e4-bb86-8c2d3e14cb85/ar25-0c556536-24b3cebf-e136-484b-b8e6-3af1f196f015.jsonl
+2026-11-02 07:28:03 | INFO | Successfully loaded game class Ar25 from environment_files/ar25/0c556536/ar25.py
+INFO:arc_agi.scorecard:Initialized ScorecardManager with idle_for=0:15:00 and max_open_for=3 days, 0:00:00
+2026-11-02 07:33:40 | ERROR | Failed to fetch environments from API (https://three.arcprize.org/api/games): HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 246, in _fetch_from_api
+    response = requests.get(url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:33:40 | INFO | Created new scorecard: 2c4d1371-7dc9-450a-a2fd-d181f3405e89
+2026-11-02 07:33:40 | ERROR | Request error while fetching metadata for game ar25: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 820, in _fetch_metadata
+    response = requests.get(metadata_url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:33:40 | INFO | Found latest version of ar25: ar25-0c556536 (downloaded: 2026-10-29 15:27:47.460920+00:00)
+2026-11-02 07:33:40 | INFO | Recording to output/arc_recordings/2c4d1371-7dc9-450a-a2fd-d181f3405e89/ar25-0c556536-641fd6aa-dac9-44d6-aad2-dab3b0a7be20.jsonl
+INFO:arc_agi.scorecard:Initialized ScorecardManager with idle_for=0:15:00 and max_open_for=3 days, 0:00:00
+2026-11-02 07:38:00 | ERROR | Failed to fetch environments from API (https://three.arcprize.org/api/games): HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 246, in _fetch_from_api
+    response = requests.get(url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:38:00 | INFO | Created new scorecard: 3e73ca81-a38d-4f44-b54f-a6910e71b62c
+2026-11-02 07:38:00 | ERROR | Request error while fetching metadata for game ar25: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+    ~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/http/client.py", line 1029, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/arc_agi/base.py", line 820, in _fetch_metadata
+    response = requests.get(metadata_url, headers=headers, timeout=10)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/home/user/ARC-AGI-3/.venv/lib/python3.13/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='three.arcprize.org', port=443): Max retries exceeded with url: /api/games/ar25 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+2026-11-02 07:38:00 | INFO | Found latest version of ar25: ar25-0c556536 (downloaded: 2026-10-29 15:27:47.460920+00:00)
+2026-11-02 07:38:00 | INFO | Recording to output/arc_recordings/3e73ca81-a38d-4f44-b54f-a6910e71b62c/ar25-0c556536-66926a7c-008b-4510-a440-ba5cecb29acc.jsonl
+{
+  "without_qahs": {
+    "success": false,
+    "actions": 20,
+    "error": null
+  },
+  "with_classical": {
+    "success": false,
+    "actions": 20,
+    "error": null
+  },
+  "with_qahs": {
+    "success": false,
+    "actions": 20,
+    "error": null
+  }
+}
+Trace: output/arc_runs/20261102T074249Z_ar25_comparison.json
+exit_status=0
+Exported 7 sanitized run(s); 23 run(s) published in /home/user/ARC-AGI-3/frontend/public/runs

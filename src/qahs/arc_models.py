@@ -3,6 +3,21 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+HARNESS_VERSION = "v7-grounded-goals"
+INPUT_REPRESENTATION = "animation+summary+adaptive-lossless-delta-v3"
+
+
+@dataclass(frozen=True)
+class ArcGroundedGoal:
+    target_component: str = "unspecified"
+    target_attributes: str = "unspecified"
+    current_bounds: str = "unspecified"
+    destination: str = "unspecified"
+    desired_state: str = "unspecified"
+    proposed_action: str = "unspecified"
+    prerequisites: str = "none"
+    partial_success: str = "unspecified"
+
 
 @dataclass(frozen=True)
 class ArcActionCandidate:
@@ -13,6 +28,9 @@ class ArcActionCandidate:
     y: int | None = None
     expected_progress: float = 0.0
     risk: float = 0.0
+    next_action_type: str | None = None
+    next_x: int | None = None
+    next_y: int | None = None
 
 
 @dataclass(frozen=True)
@@ -21,6 +39,12 @@ class ArcHypothesis:
     statement: str
     confidence: float
     predictions: dict[str, str]
+    object_role: str = "unspecified"
+    rule: str = "unspecified"
+    goal_condition: str = "unspecified"
+    falsification: str = "unspecified"
+    role: str = "mechanism"
+    grounded_goal: ArcGroundedGoal = field(default_factory=ArcGroundedGoal)
 
 
 @dataclass(frozen=True)
@@ -39,6 +63,11 @@ class ArcBelief:
     confidence: float
     status: str
     evidence: str
+    object_role: str = "unspecified"
+    rule: str = "unspecified"
+    goal_condition: str = "unspecified"
+    falsification: str = "unspecified"
+    role: str = "mechanism"
 
 
 @dataclass(frozen=True)
@@ -58,6 +87,7 @@ class ArcObservation:
     available_actions: tuple[str, ...]
     frame: tuple[tuple[int, ...], ...]
     raw_frame_count: int = 1
+    animation_frames: tuple[tuple[tuple[int, ...], ...], ...] = field(default_factory=tuple)
     event: str = "observation"
 
     @property
@@ -81,6 +111,7 @@ class ArcTurn:
     observation_after: ArcObservation
     reflection: ArcReflection | None = None
     model_calls: int = 1
+    timings: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -93,6 +124,14 @@ class ArcEpisodeTrace:
     success: bool = False
     wall_seconds: float = 0.0
     error: str | None = None
+    action_budget: int = 0
+    model: str | None = None
+    reasoning_effort: str | None = None
+    harness_version: str = HARNESS_VERSION
+    batch_id: str | None = None
+    input_representation: str = INPUT_REPRESENTATION
+    harness_flags: dict[str, bool] = field(default_factory=dict)
+    intervention_summary: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -108,6 +147,11 @@ class ArcComparisonTrace:
     with_qahs: ArcEpisodeTrace
     action_budget: int = 0
     model: str | None = None
+    reasoning_effort: str | None = None
+    harness_version: str = HARNESS_VERSION
+    batch_id: str | None = None
+    input_representation: str = INPUT_REPRESENTATION
+    harness_flags: dict[str, bool] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

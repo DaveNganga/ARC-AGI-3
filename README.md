@@ -15,13 +15,13 @@ The comparison asks whether changing the selection method improves progress, act
 Each condition uses the same six-stage loop:
 
 1. **Observe** the current ARC-AGI-3 grid and game state.
-2. **Propose** two to eight competing hypotheses and concrete tests.
-3. **Score** actions using information gain, expected progress, risk, novelty, and prior outcomes.
-4. **Select** an action using the assigned LLM, classical, or QAOA method.
+2. **Propose** eight to sixteen structured hypotheses over a deterministic catalog of up to 32 two-step plans.
+3. **Score** plans using information gain, expected progress, survival, risk, diversity, and prior outcomes.
+4. **Select** a plan using the assigned LLM, classical, or QAOA method, execute its first step, and replan from the new observation.
 5. **Act** in a separate instance of the same game and seed.
 6. **Reflect** on the result and update a persistent belief ledger.
 
-The post-action reflection is a second structured model call. It compares predicted and observed outcomes, then marks each belief as `supported`, `weakened`, `rejected`, `uncertain`, or `new`. The next turn receives that ledger so evidence is carried forward instead of silently replacing the hypothesis set.
+The v6 harness separates mechanism confidence from goal relevance, validates model-supplied hypothesis roles, groups semantic duplicates, increases alternative-goal pressure after stagnation, and records every objective contribution. It uses an adaptive 16-plan catalog, confidence saturation, goal–action alignment, progress credit, one-shot policy transfer between levels, periodic full-grid refreshes with compact deltas, validated second actions, and event-triggered model review. Saved traces retain the complete evidence and diagnostics.
 
 ## Scientific boundaries
 
@@ -30,7 +30,7 @@ This is a proof of concept, not evidence of quantum advantage.
 - Quantum QAHS currently uses an exact NumPy statevector simulation, not quantum hardware.
 - The complete cost diagonal is constructed classically and grows exponentially with the encoded decision space.
 - QAOA is an approximate optimizer; exact classical search is expected to find the minimum of the current small search space reliably.
-- The LLM creates the hypotheses, actions, and estimated progress. QAHS can select only from the candidates it receives.
+- The harness generates candidate actions and two-step plans from available controls, visible objects, changed cells, boundaries, and unexplored regions. The LLM supplies structured hypotheses, predictions, progress, and risk estimates.
 - Proposal and reflection responses are cached when two conditions reach identical states with identical histories. This improves experimental consistency, but total wall time must not be interpreted as quantum speedup without separating model latency from search time.
 - Conclusions require repeated games and seeds. Failures, interrupted API calls, and action-budget exhaustion must remain in the research record.
 
@@ -76,6 +76,7 @@ Run a live ARC-AGI-3 comparison:
   --source arc \
   --game r11l \
   --condition compare \
+  --batch batch-01 \
   --seed 0 \
   --max-steps 20
 ```
@@ -87,9 +88,17 @@ Supported conditions are:
 - `qahs_classical` — run exact classical QAHS.
 - `qahs_qaoa` — run simulated quantum QAHS.
 
-An uncached comparison can make up to `conditions × actions × 2` model calls because every action may require one proposal and one reflection. For example, three 20-action conditions can require up to 120 calls. Shared cache hits can reduce that number.
+V6 can handle predictable routine outcomes locally and invoke the model on surprises, interactions, progress, major changes, strategy resets, and periodic verification. Consequently, call counts depend on the game rather than being fixed at approximately one request per action.
 
 Raw working traces are saved under `output/arc_runs/` and are intentionally ignored by Git.
+
+New traces use a self-describing filename and store the same fields inside the JSON:
+
+```text
+20261030T190000Z__v5-compact-combined__batch-01__r11l__seed-00__actions-20__gpt-6-luna__comparison.json
+```
+
+The harness version distinguishes reflection-enabled experiments from older runs. Use one batch ID for runs that intentionally share a harness, model, seed, action budget, and game set. If a game is repeated within a batch, the dashboard uses its newest run.
 
 ## Run the website
 
@@ -108,9 +117,10 @@ Open `http://localhost:3000`:
 
 - `/` — plain-language About page, research hypothesis, learning-loop infographic, and current architecture diagram.
 - `/results` — saved-run comparison dashboard and detailed turn traces.
-- The local Results page includes a run panel. It is hidden when the static site is hosted publicly.
+- Results can switch between a single run and a versioned batch. Batch view supports metric and mode filters across games and warns when experimental settings do not match.
+- The local Results page includes a run panel. Choose **Single** for one game or **Batch** to enter several game IDs with one shared batch ID, seed, and action budget. Batch jobs run sequentially and report progress in the panel. The run panel is hidden when the static site is hosted publicly.
 
-New traces include the post-action reflection inside each turn's details. Older traces remain readable but do not contain this field.
+New traces include structured reflections, representation metadata, per-stage timing, and QAOA regret/rank diagnostics inside each turn. Older traces remain readable without these fields.
 
 ## Publish sanitized results
 
@@ -191,3 +201,9 @@ The tests cover game-ID validation, structured response parsing, persistent refl
 - `tests/` — Python correctness and integration tests.
 
 Additional operating instructions are available in `ARC_RUN_GUIDE.md` and `TESTING_CHECKLIST.md`.
+
+# V11 information-gain search
+
+ARC-AGI-3 runs now default to `v11-information-gain-search`. Luna proposes competing complete hypotheses and predicts the discrete outcome of every available physical test. Python classifies the measured outcome and updates hypothesis probabilities; exact classical search and QAOA then optimize the same ordered three-test information-gain objective, execute only the first action, and replan. Traces retain the prediction matrix, probability changes, plan, and measured outcome.
+
+V10 is frozen as `v10-success-conditioned-revision` and remains available with `qahs-arc --harness v10 ...` or the local dashboard harness selector. V11 lives in a separate module so V10 behavior and existing results are not silently changed.

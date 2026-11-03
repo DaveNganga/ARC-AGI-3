@@ -79,6 +79,11 @@ class QAOASearch:
         if decoded is None:
             raise RuntimeError("QAOA returned an invalid encoded state")
         hypothesis_id, action = decoded
+        valid_indices = np.flatnonzero(valid)
+        exact_idx = int(valid_indices[np.argmin(costs[valid_indices])])
+        selected_cost = float(costs[idx])
+        exact_cost = float(costs[exact_idx])
+        selected_rank = 1 + int(np.sum(costs[valid_indices] < selected_cost - 1e-12))
         utility = next(s.utility for s in action_scores if s.action == action)
         return SearchResult(
             self.name,
@@ -94,6 +99,12 @@ class QAOASearch:
                 "selected_probability": float(probabilities[idx]),
                 "valid_sample_rate": float(np.mean(valid[sampled])),
                 "optimizer_evaluations": int(getattr(best, "nfev", 0)),
+                "exact_minimum_index": exact_idx,
+                "exact_minimum_cost": exact_cost,
+                "selected_cost": selected_cost,
+                "regret": selected_cost - exact_cost,
+                "selected_rank": selected_rank,
+                "exact_optimum_probability": float(probabilities[exact_idx]),
             },
         )
 

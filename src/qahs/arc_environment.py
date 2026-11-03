@@ -38,6 +38,19 @@ def _last_grid(raw_frame: Any) -> tuple[tuple[int, ...], ...]:
     return tuple(tuple(int(value) for value in row) for row in layer)
 
 
+def _all_grids(raw_frame: Any) -> tuple[tuple[tuple[int, ...], ...], ...]:
+    grids = []
+    if raw_frame is None:
+        return tuple()
+    for layer in raw_frame:
+        if hasattr(layer, "tolist"):
+            layer = layer.tolist()
+        grid = tuple(tuple(int(value) for value in row) for row in layer)
+        if grid and (not grids or grid != grids[-1]):
+            grids.append(grid)
+    return tuple(grids[-6:])
+
+
 def _available_names(raw: Any, env: Any) -> tuple[str, ...]:
     actions = list(getattr(env, "action_space", []) or [])
     if not actions:
@@ -91,7 +104,8 @@ class ArcSDKEnvironment:
     def _convert(self, raw: Any, event: str) -> ArcObservation:
         if raw is None:
             raise RuntimeError("ARC-AGI-3 returned no observation")
-        frame = _last_grid(getattr(raw, "frame", []))
+        raw_frames = getattr(raw, "frame", [])
+        frame = _last_grid(raw_frames)
         return ArcObservation(
             game_id=str(getattr(raw, "game_id", self.game_id)),
             state=_state_name(getattr(raw, "state", "UNKNOWN")),
@@ -99,7 +113,8 @@ class ArcSDKEnvironment:
             win_levels=int(getattr(raw, "win_levels", 0)),
             available_actions=_available_names(raw, self.env),
             frame=frame,
-            raw_frame_count=len(getattr(raw, "frame", []) or []),
+            raw_frame_count=len(raw_frames or []),
+            animation_frames=_all_grids(raw_frames),
             event=event,
         )
 

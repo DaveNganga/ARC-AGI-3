@@ -20,6 +20,13 @@ class ClassicalSearch:
             hypothesis_id=hypothesis_id,
             utility=float(utility),
             encoded_index=idx,
-            diagnostics={"states_evaluated": int(len(candidates)), "minimum_cost": float(costs[idx])},
+            diagnostics={
+                "states_evaluated": int(len(candidates)),
+                "minimum_cost": float(costs[idx]),
+                "exact_minimum_cost": float(costs[idx]),
+                "selected_cost": float(costs[idx]),
+                "regret": 0.0,
+                "selected_rank": 1,
+            },
         )
 

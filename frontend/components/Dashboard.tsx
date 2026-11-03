@@ -1,9 +1,17 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const LOCAL_RUNNER_URL = process.env.NEXT_PUBLIC_QAHS_RUNNER_URL ?? "http://127.0.0.1:8765";
 
 type Frame = number[][];
 type Candidate = { candidate_id: string; action_type: string; x?: number | null; y?: number | null; description?: string };
+type Atom = { key?: string; kind: string; subject: string; value: string; target?: string | null; source?: string };
+type EntityMarker = { id: string; center: [number, number]; bounds?: [number, number, number, number]; color?: number; size?: number };
+type Hypothesis = { id?: number; statement?: string; confidence?: number; predictions?: Record<string, string> };
+type WorkingHypothesis = { statement?: string; focus_entity_ids?: string[]; target_candidate_id?: string; expected_effect?: string; success_signal?: string; falsification?: string };
+type PredictionRow = { candidate_id: string; outcome: string; confidence?: number };
+type PredictionMatrixRow = { hypothesis_id: number; statement: string; focus_entity_ids?: string[]; probability: number; predictions: PredictionRow[]; test_sequence?: string[]; sequence_target_state?: string; stop_condition?: string; persistence_candidate_id?: string; tracked_entity_id?: string; target_entity_id?: string; actuator_entity_id?: string; affected_entity_ids?: string[]; expected_relation_change?: string; confirmation_outcomes?: string[]; refutation_outcomes?: string[] };
 type Observation = { frame?: Frame; levels_completed?: number; event?: string };
 type Reflection = {
   summary?: string;
@@ -15,24 +23,42 @@ type Turn = {
   observation_before: Observation;
   observation_after: Observation;
   selected_candidate: Candidate;
-  proposal: { recommended_candidate_id: string; summary?: string };
-  search_diagnostics?: { quantum_used?: boolean; shots?: number };
+  proposal: { recommended_candidate_id: string; recommendation_reason?: string; summary?: string; hypotheses?: Hypothesis[]; action_candidates?: Candidate[] };
+  search_diagnostics?: { quantum_used?: boolean; shots?: number; regret?: number; selected_rank?: number; exact_optimum_probability?: number; selector_candidate_id?: string; selector_advantage?: number; override_category?: string; composed_statement?: string; selected_atoms?: Atom[]; atom_catalog?: Atom[]; entity_catalog?: EntityMarker[]; after_entity_catalog?: EntityMarker[]; luna_working_hypothesis?: WorkingHypothesis | null; trajectory_status?: string; tracked_entity_id?: string | null; target_entity_id?: string | null; distance_delta?: number | null; frontier_position?: boolean; color_changed_cells?: number; prediction_matrix?: PredictionMatrixRow[]; hypothesis_probabilities_after?: Record<string, number>; selected_plan?: string[]; observed_outcome?: string; physical_outcome?: string; retired_hypotheses?: string[]; active_hypothesis_id?: number | null; procedure_target_state?: string; procedure_continued?: boolean; procedure_reframed?: boolean; procedure_evidence_status?: string; validated_for_level?: { hypothesis_id?: number; statement?: string; validated_for_level?: number; candidate_id?: string; predicted_outcome?: string; physical_outcome?: string; game_outcome?: string } | null; success_hypothesis_audit?: { verdict?: string; corrected_hypothesis?: string; transferable_relation?: string; interface_change?: string; next_level_test?: string } };
   reflection?: Reflection | null;
   model_calls?: number;
+  timings?: Record<string, number>;
 };
 type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null };
 type Run = {
   filename: string;
+  benchmark?: string;
   source?: string;
   game_id?: string;
   seed?: number;
   action_budget?: number;
   model?: string;
+  reasoning_effort?: string;
+  harness_version?: string;
+  input_representation?: string;
+  batch_id?: string | null;
   without_qahs: Episode;
   with_classical?: Episode;
   with_qahs: Episode;
 };
-type ManifestItem = { filename: string; label: string };
+type ManifestItem = {
+  filename: string;
+  label: string;
+  benchmark?: string;
+  game_id?: string;
+  seed?: number;
+  action_budget?: number;
+  model?: string;
+  reasoning_effort?: string;
+  harness_version?: string;
+  input_representation?: string;
+  batch_id?: string | null;
+};
 
 const ARC_COLORS = [
   "#ffffff", "#f0f0f0", "#c8c8c8", "#969696", "#4b4b4b", "#000000",
@@ -40,6 +66,7 @@ const ARC_COLORS = [
   "#f28c28", "#7f1d1d", "#35a853", "#7e57c2",
 ];
 const MODE_COLORS: Record<string, string> = { LLM: "#55b6d9", Classical: "#efad4a", Quantum: "#36b3a7" };
+const ARC2_LUNA_MEDIUM = ["136b0064", "1818057f", "291dc1e1", "2ba387bc", "31f7f899", "3dc255db", "45a5af55", "58f5dbd5", "8f3a5a89", "981571dc", "b5ca7ac4", "b99e7126", "bf45cf4b", "c4d067a0", "d59b0160", "db0c5428", "e8686506"];
 
 function episodes(run: Run): [string, Episode][] {
   const values: [string, Episode][] = [["LLM", run.without_qahs]];
@@ -65,12 +92,47 @@ function overrides(episode: Episode) {
   return turns(episode).filter((turn) => turn.selected_candidate.candidate_id !== turn.proposal.recommended_candidate_id).length;
 }
 function modelCalls(episode: Episode) { return turns(episode).reduce((sum, turn) => sum + Number(turn.model_calls ?? 1), 0); }
+function meanRegret(episode: Episode) {
+  const values = turns(episode).map((turn) => turn.search_diagnostics?.regret).filter((value): value is number => typeof value === "number");
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+function supportsCombined(run: Run) { return episodes(run).every(([, episode]) => turns(episode).some((turn) => typeof turn.search_diagnostics?.regret === "number")); }
+
+type ScoreComponents = { progress: number; actions: number; search: number; calls: number; combined: number };
+function combinedScores(run: Run): Map<Episode, ScoreComponents> {
+  const conditions = episodes(run).map(([, episode]) => episode);
+  const maxLevels = Math.max(0, ...conditions.map(levels));
+  const progressRates = conditions.map((episode) => levels(episode) / Math.max(1, turns(episode).length));
+  const callRates = conditions.map((episode) => levels(episode) / Math.max(1, modelCalls(episode)));
+  const regrets = conditions.map(meanRegret);
+  const maxProgressRate = Math.max(0, ...progressRates);
+  const maxCallRate = Math.max(0, ...callRates);
+  const maxRegret = Math.max(0, ...regrets);
+  const result = new Map<Episode, ScoreComponents>();
+  conditions.forEach((episode, index) => {
+    const progress = maxLevels ? levels(episode) / maxLevels : 0;
+    const actions = maxProgressRate ? progressRates[index] / maxProgressRate : 0;
+    const search = maxRegret ? Math.max(0, 1 - regrets[index] / maxRegret) : 1;
+    const calls = maxCallRate ? callRates[index] / maxCallRate : 0;
+    result.set(episode, { progress, actions, search, calls, combined: 100 * (.5 * progress + .2 * actions + .2 * search + .1 * calls) });
+  });
+  return result;
+}
 
 const METRICS = [
   { name: "Progress", about: "Number of game levels completed.", value: levels },
   { name: "Efficiency", about: "Actions used; fewer is better when progress is equal.", value: (episode: Episode) => turns(episode).length },
   { name: "Exploration", about: "Distinct action-and-location combinations attempted.", value: uniqueActions },
   { name: "Useful actions", about: "Actions that visibly changed at least one grid cell.", value: usefulActions },
+];
+
+const BATCH_METRICS = [
+  { name: "Combined", about: "Exploratory v4 score: 50% progress, 20% action efficiency, 20% search quality, 10% call efficiency", value: (episode: Episode, run?: Run) => Math.round(run && supportsCombined(run) ? combinedScores(run).get(episode)?.combined ?? 0 : 0), suffix: "" },
+  { name: "Progress", about: "Levels completed", value: levels, suffix: "" },
+  { name: "Actions", about: "Actions used; lower is better when progress is equal", value: (episode: Episode) => turns(episode).length, suffix: "" },
+  { name: "Useful %", about: "Share of actions that visibly changed the grid", value: (episode: Episode) => turns(episode).length ? Math.round(100 * usefulActions(episode) / turns(episode).length) : 0, suffix: "%" },
+  { name: "LLM calls", about: "Proposal and reflection calls not served from cache", value: modelCalls, suffix: "" },
+  { name: "Time", about: "Total wall-clock seconds", value: (episode: Episode) => Math.round(Number(episode.wall_seconds ?? 0)), suffix: "s" },
 ];
 
 function SetupMap({ run }: { run: Run }) {
@@ -89,21 +151,23 @@ function SetupMap({ run }: { run: Run }) {
         <line x1="54" y1="54" x2="69" y2="73" />
       </svg>
       <div className="setup-node setup-center">SETUP</div>
-      <div className="setup-node setup-game"><small>Game</small><strong>{run.game_id ?? "Unknown"}</strong></div>
+      <div className="setup-node setup-game"><small>{run.benchmark === "arc_agi_2" ? "Task" : "Game"}</small><strong>{run.game_id ?? "Unknown"}</strong></div>
       <div className="setup-node setup-seed"><small>Seed</small><strong>{run.seed ?? "Unknown"}</strong></div>
       <div className="setup-node setup-actions"><small>Actions</small><strong>{budget}</strong></div>
       <div className="setup-node setup-modes"><small>Modes</small><strong>{modes}</strong></div>
-      <div className="setup-node setup-model"><small>Model</small><strong>{run.model || "gpt-6-luna"}</strong></div>
+      <div className="setup-node setup-model"><small>Model</small><strong>{run.model || "gpt-6-luna"}{run.reasoning_effort ? ` · ${run.reasoning_effort}` : ""}</strong></div>
     </section>
   );
 }
 
 function ResultsChart({ run }: { run: Run }) {
   const conditions = episodes(run);
+  const scores = combinedScores(run);
   const max = Math.max(1, ...conditions.flatMap(([, episode]) => METRICS.map((metric) => metric.value(episode))));
   return (
     <section className="card results-card">
       <h2>Results</h2>
+      {supportsCombined(run) && <><div className="score-strip">{conditions.map(([label, episode]) => { const score = scores.get(episode)!; return <div key={label}><small>{label}</small><strong>{score.combined.toFixed(1)}</strong><span>P {(score.progress * 100).toFixed(0)} · A {(score.actions * 100).toFixed(0)} · S {(score.search * 100).toFixed(0)} · C {(score.calls * 100).toFixed(0)}</span></div>; })}</div><p className="metric-about">Exploratory score: 50% progress · 20% action efficiency · 20% search quality · 10% model-call efficiency.</p></>}
       <div className="chart" role="img" aria-label="Grouped experiment result bars">
         {METRICS.map((metric) => (
           <div className="metric-group" key={metric.name}>
@@ -137,24 +201,206 @@ function ResultsChart({ run }: { run: Run }) {
   );
 }
 
-function Grid({ frame }: { frame?: Frame }) {
+function BatchResults({ runs, batchId }: { runs: Run[]; batchId: string }) {
+  const [metricName, setMetricName] = useState(BATCH_METRICS[0].name);
+  const [mode, setMode] = useState("All");
+  const metric = BATCH_METRICS.find((item) => item.name === metricName) ?? BATCH_METRICS[0];
+  const conditionLabels = ["LLM", "Classical", "Quantum"];
+  const shownLabels = mode === "All" ? conditionLabels : [mode];
+  const values = runs.flatMap((run) => episodes(run).filter(([label]) => shownLabels.includes(label)).map(([, episode]) => metric.value(episode, run)));
+  const max = Math.max(1, ...values);
+  const signatures = new Set(runs.map((run) => [run.seed, run.action_budget, run.model, run.reasoning_effort, run.harness_version].join("|")));
+  const solved = runs.reduce((sum, run) => sum + episodes(run).filter(([, episode]) => episode.success).length, 0);
+
+  return (
+    <section className="card batch-card">
+      <div className="batch-heading">
+        <div><p className="section-number">Batch comparison</p><h2>{batchId}</h2></div>
+        <div className="batch-controls">
+          <label>Metric<select value={metricName} onChange={(event) => setMetricName(event.target.value)}>{BATCH_METRICS.map((item) => <option key={item.name}>{item.name}</option>)}</select></label>
+          <label>Mode<select value={mode} onChange={(event) => setMode(event.target.value)}><option>All</option>{conditionLabels.map((label) => <option key={label}>{label}</option>)}</select></label>
+        </div>
+      </div>
+      <div className="batch-facts"><span><strong>{runs.length}</strong> games</span><span><strong>{solved}</strong> solved conditions</span><span><strong>{runs[0]?.seed ?? "—"}</strong> seed</span><span><strong>{runs[0]?.harness_version ?? "—"}</strong> harness</span></div>
+      {signatures.size > 1 && <p className="batch-warning">This batch mixes seed, budget, model, or harness settings. Interpret it cautiously.</p>}
+      <p className="metric-about">{metric.about}</p>
+      <div className="batch-chart" role="img" aria-label={`${metric.name} across games in ${batchId}`}>
+        {runs.map((run) => (
+          <div className="batch-game" key={run.filename}>
+            <div className="batch-bars">
+              {episodes(run).filter(([label]) => shownLabels.includes(label)).map(([label, episode]) => {
+                const value = metric.value(episode, run);
+                return <div className="batch-bar-slot" key={label} title={`${run.game_id} · ${label}: ${value}${metric.suffix}`}><span>{value}{metric.suffix}</span><i style={{ height: `${Math.max(value ? 8 : 2, value / max * 205)}px`, background: MODE_COLORS[label] }} /></div>;
+              })}
+            </div>
+            <strong>{run.game_id}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="legend">{shownLabels.map((label) => <span key={label}><i style={{ background: MODE_COLORS[label] }} />{label}</span>)}</div>
+    </section>
+  );
+}
+
+function candidateMarkers(candidates?: Candidate[]): EntityMarker[] {
+  return (candidates ?? []).flatMap((candidate) => {
+    const match = /^click-(e\d+)$/.exec(candidate.candidate_id);
+    return match && candidate.x !== undefined && candidate.x !== null && candidate.y !== undefined && candidate.y !== null
+      ? [{ id: match[1], center: [candidate.x, candidate.y] as [number, number] }] : [];
+  });
+}
+
+function Grid({ frame, entities = [] }: { frame?: Frame; entities?: EntityMarker[] }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!frame?.length || !canvas.current) return;
+    const height = frame.length;
+    const width = frame[0]?.length || 1;
+    const scale = Math.max(6, Math.floor(512 / Math.max(width, height)));
+    const margin = 28;
+    const context = canvas.current.getContext("2d");
+    if (!context) return;
+    canvas.current.width = width * scale + margin;
+    canvas.current.height = height * scale + margin;
+    context.fillStyle = "#071017";
+    context.fillRect(0, 0, canvas.current.width, canvas.current.height);
+    frame.forEach((row, y) => row.forEach((cell, x) => {
+      context.fillStyle = ARC_COLORS[cell] ?? "#000000";
+      context.fillRect(margin + x * scale, margin + y * scale, scale, scale);
+    }));
+    context.strokeStyle = "rgba(4, 12, 18, .28)";
+    context.lineWidth = Math.max(.5, scale / 14);
+    context.beginPath();
+    for (let x = 0; x <= width; x += 1) { context.moveTo(margin + x * scale, margin); context.lineTo(margin + x * scale, margin + height * scale); }
+    for (let y = 0; y <= height; y += 1) { context.moveTo(margin, margin + y * scale); context.lineTo(margin + width * scale, margin + y * scale); }
+    context.stroke();
+    const tick = Math.max(1, Math.ceil(Math.max(width, height) / 12));
+    context.fillStyle = "#9fb4bf";
+    context.font = "11px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    for (let x = 0; x < width; x += tick) context.fillText(String(x), margin + (x + .5) * scale, margin / 2);
+    context.textAlign = "right";
+    for (let y = 0; y < height; y += tick) context.fillText(String(y), margin - 7, margin + (y + .5) * scale);
+    entities.forEach((entity) => {
+      const [x, y] = entity.center;
+      if (x < 0 || y < 0 || x >= width || y >= height) return;
+      const px = margin + (x + .5) * scale;
+      const py = margin + (y + .5) * scale;
+      if (entity.bounds) {
+        const [x0, y0, x1, y1] = entity.bounds;
+        context.strokeStyle = "rgba(255,255,255,.88)";
+        context.lineWidth = 1.5;
+        context.strokeRect(margin + x0 * scale + 1, margin + y0 * scale + 1,
+          (x1 - x0 + 1) * scale - 2, (y1 - y0 + 1) * scale - 2);
+      }
+      context.font = "bold 12px sans-serif";
+      const labelWidth = context.measureText(entity.id).width + 8;
+      context.fillStyle = "rgba(3, 12, 18, .88)";
+      context.fillRect(px - labelWidth / 2, py - 9, labelWidth, 18);
+      context.strokeStyle = "#71e1d7";
+      context.strokeRect(px - labelWidth / 2, py - 9, labelWidth, 18);
+      context.fillStyle = "#ffffff";
+      context.textAlign = "center";
+      context.fillText(entity.id, px, py);
+    });
+  }, [frame, entities]);
   if (!frame?.length) return <div className="empty-grid">No frame</div>;
   const columns = frame[0]?.length || 1;
-  return <div className="arc-grid" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>{frame.flat().map((cell, i) => <i key={i} style={{ background: ARC_COLORS[cell] ?? "#000" }} />)}</div>;
+  return <canvas ref={canvas} className="arc-grid" style={{ aspectRatio: `${columns * Math.max(6, Math.floor(512 / Math.max(columns, frame.length))) + 28} / ${frame.length * Math.max(6, Math.floor(512 / Math.max(columns, frame.length))) + 28}` }} role="img" aria-label={`${columns} by ${frame.length} game state with entity labels`} />;
+}
+
+function actionLabel(candidate: Candidate) {
+  const coordinates = !candidate.description?.includes("(") && candidate.x !== undefined && candidate.x !== null && candidate.y !== undefined && candidate.y !== null
+    ? ` (${candidate.x}, ${candidate.y})` : "";
+  return `${candidate.description || candidate.candidate_id}${coordinates}`;
+}
+
+function normalizeBatchId(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+/, "").slice(0, 32);
+}
+
+function LunaProposal({ turn }: { turn: Turn }) {
+  const lunaAtoms = (turn.search_diagnostics?.atom_catalog ?? []).filter((atom) => atom.source === "luna");
+  const hypotheses = turn.proposal.hypotheses ?? [];
+  const working = turn.search_diagnostics?.luna_working_hypothesis;
+  return <section className="turn-block luna-block">
+    <h4>Luna</h4>
+    {turn.proposal.summary && <p>{turn.proposal.summary}</p>}
+    {working && <div className="working-hypothesis">
+      <small>Working hypothesis</small><strong>{working.statement}</strong>
+      <dl><div><dt>Looking at</dt><dd>{working.focus_entity_ids?.join(", ") || "Unspecified"}</dd></div><div><dt>Targeting</dt><dd>{working.target_candidate_id || turn.proposal.recommended_candidate_id}</dd></div><div><dt>Expects</dt><dd>{working.expected_effect}</dd></div><div><dt>Success</dt><dd>{working.success_signal}</dd></div><div><dt>Falsified by</dt><dd>{working.falsification}</dd></div></dl>
+    </div>}
+    {!working && lunaAtoms.length > 0 && <p className="turn-note">This older trace recorded Luna’s hypothesis components but not a complete Luna-authored working hypothesis. The selected composition appears under Decision.</p>}
+    {lunaAtoms.length > 0 && <div className="concept-groups">{["role", "relation", "effect"].map((kind) => {
+      const atoms = lunaAtoms.filter((atom) => atom.kind === kind);
+      return atoms.length > 0 && <div key={kind}><small>{kind}</small>{atoms.map((atom, index) => <span className="concept-chip" key={atom.key ?? `${kind}-${index}`}>{atom.subject} · {atom.value.replaceAll("_", " ")}{atom.target ? ` · ${atom.target}` : ""}</span>)}</div>;
+    })}</div>}
+    {lunaAtoms.length === 0 && hypotheses.length > 0 && <div className="hypothesis-list">{hypotheses.map((hypothesis, index) => <p key={hypothesis.id ?? index}><strong>H{hypothesis.id ?? index + 1}</strong> {hypothesis.statement}</p>)}</div>}
+    {turn.proposal.recommendation_reason && <p className="turn-note">Recommendation: {turn.proposal.recommendation_reason}</p>}
+  </section>;
+}
+
+function ActionSet({ turn }: { turn: Turn }) {
+  const actions = turn.proposal.action_candidates ?? [];
+  return <section className="turn-block action-set">
+    <h4>Available actions</h4>
+    <div>{actions.map((candidate) => {
+      const selected = candidate.candidate_id === turn.selected_candidate.candidate_id;
+      const recommended = candidate.candidate_id === turn.proposal.recommended_candidate_id;
+      return <span className={`action-chip${selected ? " selected" : ""}`} key={candidate.candidate_id} title={candidate.action_type}>
+        {actionLabel(candidate)}{recommended && <b> Luna</b>}{selected && <b> Pick</b>}
+      </span>;
+    })}</div>
+  </section>;
+}
+
+function EvidenceSearch({ turn }: { turn: Turn }) {
+  const matrix = turn.search_diagnostics?.prediction_matrix ?? [];
+  if (!matrix.length) return null;
+  const posterior = turn.search_diagnostics?.hypothesis_probabilities_after ?? {};
+  const plan = turn.search_diagnostics?.selected_plan ?? [];
+  return <section className="turn-block evidence-search">
+    <h4>Hypothesis search</h4>
+    <p className="turn-note">Plan: {plan.join(" → ") || "—"} · Observed: {turn.search_diagnostics?.observed_outcome?.replaceAll("_", " ") || "—"}</p>
+    <div className="hypothesis-list">{matrix.map((row) => {
+      const after = posterior[String(row.hypothesis_id)];
+      return <div key={row.hypothesis_id}>
+        <p><strong>H{row.hypothesis_id}</strong> {row.statement}</p>
+        <small>{(100 * row.probability).toFixed(0)}% → {typeof after === "number" ? `${(100 * after).toFixed(0)}%` : "—"}</small>
+        {row.test_sequence && row.test_sequence.length > 0 && <p className="turn-note">Test: {row.test_sequence.join(" → ")} · Target: {row.sequence_target_state || "measurable evidence"} · Stop: {row.stop_condition || "contradiction"}</p>}
+        {row.persistence_candidate_id && <p className="turn-note">Persist: {row.persistence_candidate_id}{row.actuator_entity_id ? ` via ${row.actuator_entity_id}` : ""} · Affects: {row.affected_entity_ids?.join(", ") || row.tracked_entity_id || "board"} · Expect: {row.expected_relation_change || "predicted change"}. Support: {row.confirmation_outcomes?.join(", ") || "specified evidence"}. Refute: {row.refutation_outcomes?.join(", ") || "contradiction"}.</p>}
+        <p className="turn-note">{row.predictions.map((prediction) => `${prediction.candidate_id}: ${prediction.outcome.replaceAll("_", " ")}`).join(" · ")}</p>
+      </div>;
+    })}</div>
+  </section>;
 }
 
 function EpisodeDetails({ label, episode }: { label: string; episode: Episode }) {
+  const timing = (key: string) => turns(episode).reduce((total, turn) => total + Number(turn.timings?.[key] ?? 0), 0).toFixed(1);
   return (
     <div className="episode">
       <div className="episode-stats"><span>{episode.success ? "Solved" : "Unsolved"}</span><span>{levels(episode)} levels</span><span>{turns(episode).length} actions</span></div>
+      <p className="turn-note">LLM {timing("proposal_seconds")}s · Reflection {timing("reflection_seconds")}s · ARC {timing("environment_seconds")}s · Search {timing("selection_seconds")}s</p>
       {episode.error && <p className="error">Run failed; internal details omitted.</p>}
       {turns(episode).map((turn) => (
         <details key={turn.turn}>
-          <summary>#{turn.turn} · {turn.selected_candidate.action_type}</summary>
-          <p>{turn.proposal.summary}</p>
-          {turn.reflection && <p className="reflection-note"><strong>Reflection:</strong> {turn.reflection.summary} <span>Next: {turn.reflection.next_focus}</span></p>}
-          <div className="frames"><div><small>Before</small><Grid frame={turn.observation_before.frame} /></div><div><small>After · {turn.observation_after.event}</small><Grid frame={turn.observation_after.frame} /></div></div>
-          <p className="turn-note">Pick: {turn.selected_candidate.description || turn.selected_candidate.candidate_id} · LLM: {turn.proposal.recommended_candidate_id} · Changed cells: {changed(turn)}</p>
+          <summary><span>#{turn.turn}</span><strong>{actionLabel(turn.selected_candidate)}</strong><small>{changed(turn)} cells</small></summary>
+          <div className="turn-proposal-grid"><LunaProposal turn={turn} /><ActionSet turn={turn} /></div>
+          <EvidenceSearch turn={turn} />
+          <section className="turn-block decision-block"><h4>Decision</h4>
+            {turn.search_diagnostics?.composed_statement && <p className="composition-note">{turn.search_diagnostics.composed_statement}</p>}
+            <p className="decision-action"><small>Chosen action</small><strong>{actionLabel(turn.selected_candidate)}</strong><span>{turn.selected_candidate.action_type}</span></p>
+            {turn.search_diagnostics?.procedure_continued && <p className="turn-note">Continuing H{turn.search_diagnostics.active_hypothesis_id} toward {turn.search_diagnostics.procedure_target_state || "its target state"}.</p>}
+            {turn.search_diagnostics?.procedure_evidence_status && turn.search_diagnostics.procedure_evidence_status !== "inactive" && <p className="turn-note">Procedure: {turn.search_diagnostics.procedure_evidence_status}{turn.search_diagnostics.procedure_reframed ? " · updated hypothesis" : ""}.</p>}
+            {turn.search_diagnostics?.validated_for_level && <p className="turn-note">Validated for level {turn.search_diagnostics.validated_for_level.validated_for_level}: H{turn.search_diagnostics.validated_for_level.hypothesis_id} · {turn.search_diagnostics.validated_for_level.statement}</p>}
+            {turn.search_diagnostics?.selected_atoms && <p className="turn-note">{turn.search_diagnostics.selected_atoms.map((atom) => `${atom.kind}: ${atom.subject} ${atom.value.replaceAll("_", " ")}${atom.target ? ` ${atom.target}` : ""}${atom.source === "python_mutation" ? " ★" : ""}`).join(" · ")}</p>}
+          </section>
+          {turn.search_diagnostics?.trajectory_status && turn.search_diagnostics.trajectory_status !== "not_applicable" && <p className="turn-note">Path: {turn.search_diagnostics.trajectory_status.replaceAll("_", " ")} · Object: {turn.search_diagnostics.tracked_entity_id || "—"}{turn.search_diagnostics.target_entity_id ? ` → ${turn.search_diagnostics.target_entity_id}` : ""}{typeof turn.search_diagnostics.distance_delta === "number" ? ` · Distance: ${turn.search_diagnostics.distance_delta >= 0 ? "−" : "+"}${Math.abs(turn.search_diagnostics.distance_delta).toFixed(1)}` : ""}</p>}
+          <section className="turn-block state-block"><h4>Evidence</h4><div className="frames"><figure><figcaption>Before · Level {turn.observation_before.levels_completed ?? 0}</figcaption><Grid frame={turn.observation_before.frame} entities={turn.search_diagnostics?.entity_catalog ?? candidateMarkers(turn.proposal.action_candidates)} /></figure><figure><figcaption>After · Level {turn.observation_after.levels_completed ?? 0}</figcaption><Grid frame={turn.observation_after.frame} entities={turn.search_diagnostics?.after_entity_catalog ?? (turn.observation_before.levels_completed === turn.observation_after.levels_completed ? candidateMarkers(turn.proposal.action_candidates) : [])} /><small>{turn.observation_after.event}</small></figure></div></section>
+          {turn.reflection && <p className="reflection-note"><strong>Outcome:</strong> {turn.reflection.summary} <span>Next: {turn.reflection.next_focus}</span></p>}
+          {turn.search_diagnostics?.success_hypothesis_audit && <section className="turn-block audit-block"><h4>Success audit · {turn.search_diagnostics.success_hypothesis_audit.verdict?.replaceAll("_", " ")}</h4><p>{turn.search_diagnostics.success_hypothesis_audit.corrected_hypothesis}</p><p className="turn-note">Transfer: {turn.search_diagnostics.success_hypothesis_audit.transferable_relation}</p><p className="turn-note">Interface: {turn.search_diagnostics.success_hypothesis_audit.interface_change}</p></section>}
+          <p className="turn-note">Luna pick: {turn.proposal.recommended_candidate_id} · Changed: {changed(turn)}{turn.search_diagnostics?.regret !== undefined ? ` · Regret: ${turn.search_diagnostics.regret.toFixed(3)} · Rank: ${turn.search_diagnostics.selected_rank}` : ""}</p>
         </details>
       ))}
       {!turns(episode).length && <p>No turns recorded for {label}.</p>}
@@ -176,33 +422,177 @@ function Details({ run }: { run: Run }) {
   );
 }
 
-function LocalRunPanel({ onComplete }: { onComplete: (filename: string) => Promise<void> }) {
+function CounterfactualPanel({ run }: { run: Run }) {
+  const options = episodes(run).flatMap(([label, episode]) => turns(episode).flatMap((turn) => {
+    const alternative = turn.search_diagnostics?.selector_candidate_id;
+    if (!alternative || alternative === turn.selected_candidate.candidate_id) return [];
+    const candidate = turn.proposal.action_candidates?.find((item) => item.candidate_id === alternative);
+    return candidate ? [{ label, condition: episode.condition === "qahs_classical" ? "with_classical" : "with_qahs", turn: turn.turn, candidate, advantage: turn.search_diagnostics?.selector_advantage }] : [];
+  }));
+  const [choice, setChoice] = useState(0);
+  const [horizon, setHorizon] = useState(1);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState("");
+  if (run.source !== "arc" || !options.length) return null;
+  const selected = options[Math.min(choice, options.length - 1)];
+  async function replay() {
+    setRunning(true); setResult("Replaying…");
+    try {
+      const response = await fetch(`${LOCAL_RUNNER_URL}/counterfactual`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: run.filename, condition: selected.condition, turn: selected.turn, horizon }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Replay failed.");
+      setResult(`${data.alternative_levels_delta > 0 ? "Progress" : "No level gain"} · ${data.immediate_frame_difference} cells differ from original · saved`);
+    } catch (reason) { setResult(reason instanceof Error ? reason.message : "Replay failed."); }
+    finally { setRunning(false); }
+  }
+  return <section className="card counterfactual-card"><h2>Alternative replay</h2><p className="metric-about">Replay the recorded prefix, then test one rejected QAHS action without another model call.</p><div className="counterfactual-controls"><label>Alternative<select value={choice} onChange={(event) => setChoice(Number(event.target.value))}>{options.map((item, index) => <option value={index} key={`${item.condition}-${item.turn}`}>{item.label} · turn {item.turn} · {item.candidate.description || item.candidate.action_type} · +{Number(item.advantage ?? 0).toFixed(2)}</option>)}</select></label><label>Follow-up<select value={horizon} onChange={(event) => setHorizon(Number(event.target.value))}><option value={1}>Immediate</option><option value={3}>3 actions</option><option value={5}>5 actions</option></select></label><button type="button" onClick={replay} disabled={running}>{running ? "Replaying…" : "Test path"}</button></div>{result && <p className="run-message">{result}</p>}</section>;
+}
+
+type RunProgress = { phase?: string; condition?: string; turn?: number; max_steps?: number; percent?: number; elapsed_seconds?: number; estimated_remaining_seconds?: number | null; levels?: number };
+type BatchJob = { job_id: string; status: string; batch_id: string; total: number; completed: number; current?: string | null; files?: string[]; errors?: { game: string; error: string }[]; message?: string; progress?: RunProgress; run_started_at?: string };
+
+const ACTIVE_BATCH_KEY = "qahs-active-batch";
+
+function LocalRunPanel({ onComplete }: { onComplete: (filename?: string) => Promise<void> }) {
+  const [runType, setRunType] = useState<"single" | "batch">("single");
+  const [benchmark, setBenchmark] = useState<"arc2" | "arc3">("arc3");
   const [source, setSource] = useState("demo");
   const [game, setGame] = useState("ls20");
+  const [games, setGames] = useState("ar25, vc33, lp85, r11l, s5i5");
   const [seed, setSeed] = useState(0);
   const [actions, setActions] = useState(8);
+  const [model, setModel] = useState("gpt-6-luna");
+  const [reasoningEffort, setReasoningEffort] = useState("medium");
+  const [harness, setHarness] = useState("v11");
+  const [batch, setBatch] = useState("batch-01");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
+  const [job, setJob] = useState<BatchJob | null>(null);
+  const [clock, setClock] = useState(Date.now());
+
+  function chooseBenchmark(value: "arc2" | "arc3") {
+    setBenchmark(value);
+    if (value === "arc2") {
+      setSource("arc2"); setGame(ARC2_LUNA_MEDIUM[0]); setGames(ARC2_LUNA_MEDIUM.slice(0, 8).join(", "));
+      setModel("gpt-6-luna"); setReasoningEffort("medium"); setActions(1); setBatch("arc2-luna-medium");
+    } else {
+      setSource("arc"); setGame("ar25"); setGames("ar25, vc33, lp85, r11l, s5i5"); setActions(8); setBatch("batch-01");
+    }
+  }
+
+  function toggleArc2Task(task: string) {
+    const selected = new Set(games.split(/[\s,]+/).filter(Boolean));
+    if (selected.has(task)) selected.delete(task); else selected.add(task);
+    setGames(ARC2_LUNA_MEDIUM.filter((item) => selected.has(item)).join(", "));
+  }
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  const formatDuration = (seconds?: number | null) => {
+    if (seconds === undefined || seconds === null) return "—";
+    const rounded = Math.max(0, Math.round(seconds));
+    return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
+  };
+  const phaseLabel: Record<string, string> = { starting: "Starting", condition_started: "Starting mode", reasoning: "Reasoning", objective: "Scoring", selection: "Selecting", environment: "Acting", review: "Reviewing", reviewing: "Reviewing success", turn_completed: "Turn done", condition_completed: "Mode done", done: "Done" };
+  const liveElapsed = job?.run_started_at && ["running", "starting"].includes(job.status)
+    ? (clock - new Date(job.run_started_at).getTime()) / 1000
+    : job?.progress?.elapsed_seconds;
+
+  function createBatchId() {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    setBatch(`batch-${stamp}`);
+  }
+
+  async function waitForBatch(jobId: string): Promise<BatchJob> {
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const response = await fetch(`${LOCAL_RUNNER_URL}/jobs/${jobId}`, { cache: "no-store" });
+      const job: BatchJob = await response.json();
+      if (!response.ok) throw new Error("The batch status could not be loaded.");
+      setJob(job);
+      const current = job.current ? ` · ${job.current}` : "";
+      setMessage(`${job.completed}/${job.total}${current}`);
+      if (!["running", "starting"].includes(job.status)) return job;
+    }
+  }
+
+  async function followBatch(jobId: string) {
+    setRunning(true);
+    try {
+      const finalJob = await waitForBatch(jobId);
+      if (finalJob.status === "paused") {
+        setMessage(`${finalJob.completed}/${finalJob.total} · paused`);
+        return;
+      }
+      localStorage.removeItem(ACTIVE_BATCH_KEY);
+      await onComplete(finalJob.files?.[0]);
+      setMessage(finalJob.errors?.length ? `${finalJob.completed}/${finalJob.total} · ${finalJob.errors.length} failed` : `${finalJob.completed}/${finalJob.total} · saved`);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "The batch status could not be loaded.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  useEffect(() => {
+    const savedJob = localStorage.getItem(ACTIVE_BATCH_KEY);
+    if (!savedJob) return;
+    fetch(`${LOCAL_RUNNER_URL}/jobs/${savedJob}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        const restored: BatchJob = await response.json();
+        setJob(restored);
+        setMessage(`${restored.completed}/${restored.total} · ${restored.status}`);
+        if (["running", "starting"].includes(restored.status)) void followBatch(restored.job_id);
+      })
+      .catch(() => localStorage.removeItem(ACTIVE_BATCH_KEY));
+  // The local job ID is intentionally restored once when the panel mounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function resumeBatch() {
+    if (!job) return;
+    setRunning(true);
+    setMessage("Resuming…");
+    try {
+      const response = await fetch(`${LOCAL_RUNNER_URL}/jobs/${job.job_id}/resume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const restored: BatchJob & { error?: string } = await response.json();
+      if (!response.ok) throw new Error(restored.error || "The batch could not resume.");
+      localStorage.setItem(ACTIVE_BATCH_KEY, restored.job_id);
+      setJob(restored);
+      await followBatch(restored.job_id);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "The batch could not resume.");
+      setRunning(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setRunning(true);
-    setMessage("Running all three modes…");
+    setMessage(runType === "batch" ? "Starting batch…" : "Running all three modes…");
     try {
-      const response = await fetch("http://127.0.0.1:8765/run", {
+      const response = await fetch(`${LOCAL_RUNNER_URL}/batch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source, game, seed, max_steps: actions }),
+        body: JSON.stringify({ source: benchmark === "arc2" ? "arc2" : runType === "batch" ? "arc" : source, game, games: runType === "batch" ? games : [game], seed, max_steps: benchmark === "arc2" ? 1 : actions, batch, model, reasoning_effort: reasoningEffort, harness }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The experiment failed.");
-      await onComplete(result.filename);
-      setMessage("Run saved.");
+      localStorage.setItem(ACTIVE_BATCH_KEY, result.job_id);
+      setJob(result);
+      await followBatch(result.job_id);
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "The experiment failed.");
-    } finally {
-      setRunning(false);
-    }
+    } finally { setRunning(false); }
   }
 
   return (
@@ -210,12 +600,27 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename: string) => Promi
       <div className="local-panel-inner">
         <h2>Run</h2>
         <form onSubmit={submit}>
-          <label>Source<select value={source} onChange={(event) => setSource(event.target.value)} disabled={running}><option value="demo">Demo</option><option value="arc">ARC</option></select></label>
-          <label>Game<input value={game} onChange={(event) => setGame(event.target.value)} disabled={running || source === "demo"} maxLength={40} /></label>
-          <label>Seed<input type="number" min="0" max="1000000" value={seed} onChange={(event) => setSeed(Number(event.target.value))} disabled={running} /></label>
-          <label>Actions<input type="range" min="2" max="30" value={actions} onChange={(event) => setActions(Number(event.target.value))} disabled={running} /><output>{actions}</output></label>
-          <button type="submit" disabled={running}>{running ? "Running…" : "Start"}</button>
+          <label>Benchmark<select value={benchmark} onChange={(event) => chooseBenchmark(event.target.value as "arc2" | "arc3")} disabled={running}><option value="arc3">ARC-AGI-3</option><option value="arc2">ARC-AGI-2 · Luna set</option></select></label>
+          <div className="run-type"><button type="button" className={runType === "single" ? "active" : ""} onClick={() => setRunType("single")} disabled={running}>Single</button><button type="button" className={runType === "batch" ? "active" : ""} onClick={() => { setRunType("batch"); setSource("arc"); }} disabled={running}>Batch</button></div>
+          {benchmark === "arc3" && runType === "single" && <label>Source<select value={source} onChange={(event) => setSource(event.target.value)} disabled={running}><option value="demo">Demo</option><option value="arc">ARC</option></select></label>}
+          {runType === "single" && (benchmark === "arc2" ? <label>Task<select value={game} onChange={(event) => setGame(event.target.value)} disabled={running}>{ARC2_LUNA_MEDIUM.map((task) => <option key={task}>{task}</option>)}</select></label> : <label>Game<input value={game} onChange={(event) => setGame(event.target.value)} disabled={running || source === "demo"} maxLength={40} /></label>)}
+          {runType === "batch" && benchmark === "arc3" && <label>Games<textarea value={games} onChange={(event) => setGames(event.target.value.toLowerCase())} rows={4} disabled={running} /></label>}
+          {runType === "batch" && benchmark === "arc2" && <fieldset className="task-picker"><legend>Luna Medium passes</legend>{ARC2_LUNA_MEDIUM.map((task) => <label key={task}><input type="checkbox" checked={games.split(/[\s,]+/).includes(task)} onChange={() => toggleArc2Task(task)} disabled={running} />{task}</label>)}</fieldset>}
+          {(benchmark === "arc2" || runType === "batch" || source === "arc") && <label>Model<select value={model} onChange={(event) => setModel(event.target.value)} disabled={running}><option value="gpt-6-luna">GPT-6 Luna</option><option value="gpt-6-sol">GPT-6 Sol</option></select></label>}
+          {(benchmark === "arc2" || runType === "batch" || source === "arc") && <label>Effort<select value={reasoningEffort} onChange={(event) => setReasoningEffort(event.target.value)} disabled={running}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">XHigh</option><option value="max">Max</option></select></label>}
+          {benchmark === "arc3" && (runType === "batch" || source === "arc") && <label>Harness<select value={harness} onChange={(event) => setHarness(event.target.value)} disabled={running}><option value="v12">V12 · structured worlds</option><option value="v11">V11 · information gain</option><option value="v10">V10 · frozen</option></select></label>}
+          {benchmark === "arc3" && <label>Seed<input type="number" min="0" max="1000000" value={seed} onChange={(event) => setSeed(Number(event.target.value))} disabled={running} /></label>}
+          <label>Batch ID<span className="batch-id-field"><input value={batch} onChange={(event) => setBatch(normalizeBatchId(event.target.value))} pattern="[a-z0-9][a-z0-9-]{0,31}" maxLength={32} required disabled={running} /><button type="button" onClick={createBatchId} disabled={running} title="Create batch ID">↻</button></span></label>
+          {benchmark === "arc3" && <label>Actions<input type="range" min="2" max="100" value={actions} onChange={(event) => setActions(Number(event.target.value))} disabled={running} /><output>{actions}</output></label>}
+          <button type="submit" disabled={running}>{running ? "Running…" : runType === "batch" ? "Start batch" : "Start"}</button>
         </form>
+        {job?.status === "paused" && <button type="button" className="resume-button" onClick={resumeBatch} disabled={running}>Resume</button>}
+        {(job || running) && <div className="run-progress" aria-live="polite">
+          <div className="run-progress-head"><strong>{job?.status.startsWith("completed") ? "✓ Done" : phaseLabel[job?.progress?.phase ?? "starting"] ?? job?.status ?? "Starting"}</strong><span>{Math.round(job?.progress?.percent ?? 0)}%</span></div>
+          <div className="run-progress-track"><span style={{ width: `${job?.progress?.percent ?? 0}%` }} /></div>
+          <p>{job?.current ?? (running ? "Preparing" : "Batch")}{job?.progress?.condition ? ` · ${job.progress.condition.replaceAll("_", " ")}` : ""}{job?.progress?.turn ? ` · ${job.progress.turn}/${job.progress.max_steps}` : ""}</p>
+          <small>{formatDuration(liveElapsed)} elapsed · {formatDuration(job?.progress?.estimated_remaining_seconds)} left</small>
+        </div>}
         {message && <p className="run-message" aria-live="polite">{message}</p>}
         <small>Local only</small>
       </div>
@@ -229,6 +634,10 @@ export default function Dashboard() {
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState("");
   const [isLocal, setIsLocal] = useState(false);
+  const [view, setView] = useState<"single" | "batch">("single");
+  const [batchId, setBatchId] = useState("");
+  const [batchRuns, setBatchRuns] = useState<Run[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const loadManifest = useCallback(async (preferred?: string) => {
     setError("");
@@ -236,8 +645,11 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("No published runs found.");
       return response.json();
     }).then((items: ManifestItem[]) => {
+      if (!items.length) throw new Error("No saved experiments are available yet.");
       setManifest(items);
       setFilename(preferred && items.some((item) => item.filename === preferred) ? preferred : items[0]?.filename ?? "");
+      const firstBatch = items.find((item) => item.batch_id)?.batch_id;
+      setBatchId((current) => current || firstBatch || "");
     }).catch((reason) => setError(reason.message));
   }, []);
   useEffect(() => {
@@ -252,20 +664,46 @@ export default function Dashboard() {
   useEffect(() => {
     if (!filename) return;
     setRun(null);
-    fetch(`/runs/${filename}?v=${Date.now()}`, { cache: "no-store" }).then((response) => response.json()).then((data: Run) => setRun({ ...data, filename })).catch(() => setError("The selected run could not be loaded."));
+    fetch(`/runs/${filename}?v=${Date.now()}`, { cache: "no-store" }).then((response) => {
+      if (!response.ok) throw new Error(`Run request failed (${response.status}).`);
+      return response.json();
+    }).then((data: Run) => setRun({ ...data, filename })).catch(() => setError("The selected run could not be loaded."));
   }, [filename]);
+  const batchIds = useMemo(() => Array.from(new Set(manifest.map((item) => item.batch_id).filter((item): item is string => Boolean(item)))), [manifest]);
+  useEffect(() => {
+    if (view !== "batch" || !batchId) return;
+    const seen = new Set<string>();
+    const items = manifest.filter((item) => {
+      if (item.batch_id !== batchId || !item.harness_version) return false;
+      const game = item.game_id ?? item.filename;
+      if (seen.has(game)) return false;
+      seen.add(game);
+      return true;
+    });
+    setBatchLoading(true);
+    setError("");
+    Promise.all(items.map((item) => fetch(`/runs/${item.filename}?v=${Date.now()}`, { cache: "no-store" }).then((response) => response.json()).then((data: Run) => ({ ...data, filename: item.filename }))))
+      .then((runs) => setBatchRuns(runs.sort((left, right) => String(left.game_id).localeCompare(String(right.game_id)))))
+      .catch(() => setError("The selected batch could not be loaded."))
+      .finally(() => setBatchLoading(false));
+  }, [batchId, manifest, view]);
   const selectedLabel = useMemo(() => manifest.find((item) => item.filename === filename)?.label ?? filename, [manifest, filename]);
 
   return (
     <div className={isLocal ? "app-shell has-local-panel" : "app-shell"}>
       {isLocal && <LocalRunPanel onComplete={loadManifest} />}
       <main>
-        <header className="banner"><h1>ARC-AGI-3: comparing LLM, classical QAHS, and quantum QAHS</h1></header>
-        {manifest.length > 0 && <label className="run-select"><span className="sr-only">Saved experiment</span><select value={filename} onChange={(event) => setFilename(event.target.value)} aria-label="Saved experiment">{manifest.map((item) => <option value={item.filename} key={item.filename}>{item.label}</option>)}</select></label>}
+        <header className="banner"><h1>QAHS: comparing LLM, classical search, and quantum search</h1></header>
+        <div className="view-switch" role="group" aria-label="Result view"><button className={view === "single" ? "active" : ""} onClick={() => setView("single")}>Single run</button><button className={view === "batch" ? "active" : ""} onClick={() => setView("batch")} disabled={!batchIds.length}>Batch</button></div>
+        {view === "single" && manifest.length > 0 && <label className="run-select"><span className="sr-only">Saved experiment</span><select value={filename} onChange={(event) => setFilename(event.target.value)} aria-label="Saved experiment">{manifest.map((item) => <option value={item.filename} key={item.filename}>{item.label}</option>)}</select></label>}
+        {view === "batch" && batchIds.length > 0 && <label className="run-select"><span className="sr-only">Saved batch</span><select value={batchId} onChange={(event) => setBatchId(event.target.value)} aria-label="Saved batch">{batchIds.map((item) => <option key={item}>{item}</option>)}</select></label>}
         {error && <p className="error">{error}</p>}
-        {!run && !error && <p className="loading">Loading experiment…</p>}
-        {run && <><SetupMap run={run} /><ResultsChart run={run} /><Details run={run} /></>}
-        <footer>{selectedLabel}</footer>
+        {view === "single" && !run && !error && <p className="loading">Loading experiment…</p>}
+        {view === "single" && run && <><SetupMap run={run} /><ResultsChart run={run} />{isLocal && <CounterfactualPanel run={run} />}<Details run={run} /></>}
+        {view === "batch" && batchLoading && <p className="loading">Loading batch…</p>}
+        {view === "batch" && !batchLoading && batchRuns.length > 0 && <BatchResults runs={batchRuns} batchId={batchId} />}
+        {view === "batch" && !batchLoading && !batchIds.length && <p className="loading">New versioned batches will appear here.</p>}
+        <footer>{view === "single" ? selectedLabel : batchId}</footer>
       </main>
     </div>
   );

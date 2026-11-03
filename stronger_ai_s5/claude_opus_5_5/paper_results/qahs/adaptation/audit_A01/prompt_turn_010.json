@@ -1,0 +1,746 @@
+{
+  "benchmark_scale": {
+    "name": "S5",
+    "complete_hypotheses": 16777216
+  },
+  "public_hypothesis_ontology": {
+    "player": [
+      {
+        "id": "P0",
+        "description": "Class A controllable"
+      },
+      {
+        "id": "P1",
+        "description": "Class B controllable"
+      },
+      {
+        "id": "P2",
+        "description": "Class C controllable"
+      },
+      {
+        "id": "P3",
+        "description": "Nearest eligible object controllable"
+      },
+      {
+        "id": "P4",
+        "description": "Farthest eligible object controllable"
+      },
+      {
+        "id": "P5",
+        "description": "Selected object controllable"
+      },
+      {
+        "id": "P6",
+        "description": "Last-touched object controllable"
+      },
+      {
+        "id": "P7",
+        "description": "Goal-nearest object controllable"
+      },
+      {
+        "id": "P8",
+        "description": "Largest eligible component controllable"
+      },
+      {
+        "id": "P9",
+        "description": "Smallest eligible component controllable"
+      },
+      {
+        "id": "P10",
+        "description": "Control cycles after event"
+      },
+      {
+        "id": "P11",
+        "description": "State-dependent control"
+      },
+      {
+        "id": "P12",
+        "description": "Region-dependent control"
+      },
+      {
+        "id": "P13",
+        "description": "Action-dependent control"
+      },
+      {
+        "id": "P14",
+        "description": "Conditional control after prerequisite"
+      },
+      {
+        "id": "P15",
+        "description": "Multiple-object control"
+      }
+    ],
+    "goal": [
+      {
+        "id": "G0",
+        "description": "Reach Class B"
+      },
+      {
+        "id": "G1",
+        "description": "Reach Class C"
+      },
+      {
+        "id": "G2",
+        "description": "Reach Class A"
+      },
+      {
+        "id": "G3",
+        "description": "Reach designated region"
+      },
+      {
+        "id": "G4",
+        "description": "Collect all Class C"
+      },
+      {
+        "id": "G5",
+        "description": "Collect all Class B"
+      },
+      {
+        "id": "G6",
+        "description": "Collect specified set"
+      },
+      {
+        "id": "G7",
+        "description": "Avoid hazards and exit"
+      },
+      {
+        "id": "G8",
+        "description": "Move object to target"
+      },
+      {
+        "id": "G9",
+        "description": "Match object classes to targets"
+      },
+      {
+        "id": "G10",
+        "description": "Form spatial pattern"
+      },
+      {
+        "id": "G11",
+        "description": "Clear designated objects"
+      },
+      {
+        "id": "G12",
+        "description": "Activate all switches"
+      },
+      {
+        "id": "G13",
+        "description": "Open exit then reach it"
+      },
+      {
+        "id": "G14",
+        "description": "Achieve target configuration"
+      },
+      {
+        "id": "G15",
+        "description": "Complete ordered objective"
+      }
+    ],
+    "movement": [
+      {
+        "id": "M0",
+        "description": "One-cell movement"
+      },
+      {
+        "id": "M1",
+        "description": "Two-cell movement"
+      },
+      {
+        "id": "M2",
+        "description": "Slide until obstacle"
+      },
+      {
+        "id": "M3",
+        "description": "Push adjacent object"
+      },
+      {
+        "id": "M4",
+        "description": "Pull adjacent object"
+      },
+      {
+        "id": "M5",
+        "description": "Swap positions"
+      },
+      {
+        "id": "M6",
+        "description": "Jump one occupied cell"
+      },
+      {
+        "id": "M7",
+        "description": "Teleport through linked location"
+      },
+      {
+        "id": "M8",
+        "description": "Rotate requested direction 90 degrees"
+      },
+      {
+        "id": "M9",
+        "description": "Reverse requested direction"
+      },
+      {
+        "id": "M10",
+        "description": "Alternate one/two-cell step"
+      },
+      {
+        "id": "M11",
+        "description": "Object-state-dependent movement"
+      },
+      {
+        "id": "M12",
+        "description": "Terrain-dependent movement"
+      },
+      {
+        "id": "M13",
+        "description": "Momentum-dependent movement"
+      },
+      {
+        "id": "M14",
+        "description": "Event-conditional movement"
+      },
+      {
+        "id": "M15",
+        "description": "Coupled movement"
+      }
+    ],
+    "topology": [
+      {
+        "id": "T0",
+        "description": "Fixed wall with gap"
+      },
+      {
+        "id": "T1",
+        "description": "Barrier cells passable"
+      },
+      {
+        "id": "T2",
+        "description": "Switch-controlled door"
+      },
+      {
+        "id": "T3",
+        "description": "Key-controlled door"
+      },
+      {
+        "id": "T4",
+        "description": "One-way passage"
+      },
+      {
+        "id": "T5",
+        "description": "Class-dependent passage"
+      },
+      {
+        "id": "T6",
+        "description": "State-dependent passage"
+      },
+      {
+        "id": "T7",
+        "description": "Turn-dependent passage"
+      },
+      {
+        "id": "T8",
+        "description": "Breakable wall"
+      },
+      {
+        "id": "T9",
+        "description": "Movable barrier"
+      },
+      {
+        "id": "T10",
+        "description": "Teleport portal"
+      },
+      {
+        "id": "T11",
+        "description": "Wraparound boundary"
+      },
+      {
+        "id": "T12",
+        "description": "Hidden passage"
+      },
+      {
+        "id": "T13",
+        "description": "Conditional gap"
+      },
+      {
+        "id": "T14",
+        "description": "Region restriction"
+      },
+      {
+        "id": "T15",
+        "description": "Dynamic topology"
+      }
+    ],
+    "interaction": [
+      {
+        "id": "I0",
+        "description": "No special interaction"
+      },
+      {
+        "id": "I1",
+        "description": "Hazard/reset on contact"
+      },
+      {
+        "id": "I2",
+        "description": "Collect on contact"
+      },
+      {
+        "id": "I3",
+        "description": "Activate on contact"
+      },
+      {
+        "id": "I4",
+        "description": "Deactivate on contact"
+      },
+      {
+        "id": "I5",
+        "description": "Transform controlled object"
+      },
+      {
+        "id": "I6",
+        "description": "Transform target object"
+      },
+      {
+        "id": "I7",
+        "description": "Swap object states/positions"
+      },
+      {
+        "id": "I8",
+        "description": "Activate when pushed"
+      },
+      {
+        "id": "I9",
+        "description": "Unlock on interaction"
+      },
+      {
+        "id": "I10",
+        "description": "Teleport trigger"
+      },
+      {
+        "id": "I11",
+        "description": "Duplicate object"
+      },
+      {
+        "id": "I12",
+        "description": "Remove both objects"
+      },
+      {
+        "id": "I13",
+        "description": "Merge objects"
+      },
+      {
+        "id": "I14",
+        "description": "State-conditional interaction"
+      },
+      {
+        "id": "I15",
+        "description": "Chain reaction"
+      }
+    ],
+    "sequence": [
+      {
+        "id": "S0",
+        "description": "Stateless"
+      },
+      {
+        "id": "S1",
+        "description": "Class C before Class B"
+      },
+      {
+        "id": "S2",
+        "description": "Class B before Class C"
+      },
+      {
+        "id": "S3",
+        "description": "Key before door"
+      },
+      {
+        "id": "S4",
+        "description": "Switch before goal"
+      },
+      {
+        "id": "S5",
+        "description": "Ordered object classes"
+      },
+      {
+        "id": "S6",
+        "description": "Reverse ordered object classes"
+      },
+      {
+        "id": "S7",
+        "description": "Alternate target classes"
+      },
+      {
+        "id": "S8",
+        "description": "Previous action affects result"
+      },
+      {
+        "id": "S9",
+        "description": "Previous object affects result"
+      },
+      {
+        "id": "S10",
+        "description": "Counter-based state change"
+      },
+      {
+        "id": "S11",
+        "description": "Toggle between two modes"
+      },
+      {
+        "id": "S12",
+        "description": "Persistent unlock"
+      },
+      {
+        "id": "S13",
+        "description": "Temporary unlock"
+      },
+      {
+        "id": "S14",
+        "description": "Multi-stage objective"
+      },
+      {
+        "id": "S15",
+        "description": "History-dependent rule switch"
+      }
+    ]
+  },
+  "current_agent_visible_state": {
+    "step": 9,
+    "size": 8,
+    "grid": [
+      "     1  2  3  4  5  6  7  8",
+      " 1   .  .  .  #  .  .  .  .",
+      " 2   .  .  .  #  .  .  .  .",
+      " 3   .  .  .  #  .  .  3  .",
+      " 4   .  .  .  .  .  1  2  .",
+      " 5   .  .  .  #  .  .  .  .",
+      " 6   .  .  .  #  .  .  .  .",
+      " 7   .  3  .  #  .  .  .  .",
+      " 8   .  .  .  #  .  .  .  ."
+    ],
+    "objects": [
+      {
+        "object_id": "11",
+        "symbol": "1",
+        "row": 4,
+        "col": 6,
+        "active": false
+      },
+      {
+        "object_id": "21",
+        "symbol": "2",
+        "row": 4,
+        "col": 7,
+        "active": false
+      },
+      {
+        "object_id": "31",
+        "symbol": "3",
+        "row": 3,
+        "col": 7,
+        "active": false
+      },
+      {
+        "object_id": "32",
+        "symbol": "3",
+        "row": 7,
+        "col": 2,
+        "active": false
+      }
+    ],
+    "barrier_cells": [
+      [
+        1,
+        4
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        6,
+        4
+      ],
+      [
+        7,
+        4
+      ],
+      [
+        8,
+        4
+      ]
+    ],
+    "visible_openings_in_barrier_column": [
+      [
+        4,
+        4
+      ]
+    ],
+    "available_actions": [
+      "UP",
+      "DOWN",
+      "LEFT",
+      "RIGHT"
+    ],
+    "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+  },
+  "experimental_evidence": [
+    {
+      "evidence_id": "E1",
+      "action": "DOWN",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              2
+            ],
+            "to": [
+              4,
+              2
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E2",
+      "action": "RIGHT",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              2
+            ],
+            "to": [
+              4,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E3",
+      "action": "RIGHT",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              3
+            ],
+            "to": [
+              4,
+              4
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E4",
+      "action": "RIGHT",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              4
+            ],
+            "to": [
+              4,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E5",
+      "action": "RIGHT",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              6
+            ],
+            "to": [
+              4,
+              8
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E6",
+      "action": "RIGHT",
+      "observation_delta": {
+        "moved": [],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E7",
+      "action": "UP",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              8
+            ],
+            "to": [
+              2,
+              8
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E8",
+      "action": "LEFT",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              2,
+              8
+            ],
+            "to": [
+              2,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    },
+    {
+      "evidence_id": "E9",
+      "action": "DOWN",
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              2,
+              6
+            ],
+            "to": [
+              4,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "solved_env": false,
+      "failed_env": false
+    }
+  ],
+  "action_test_counts": {
+    "UP": 1,
+    "DOWN": 2,
+    "LEFT": 1,
+    "RIGHT": 5
+  },
+  "decision_objective": [
+    "Choose the next action expected to provide the greatest useful information for discriminating among currently plausible hypotheses.",
+    "Prefer an untested action when it can discriminate among plausible hypotheses.",
+    "Do not repeat an established experiment unless the current state/context makes repetition informative.",
+    "Do not claim that a specific rule ID is active unless the observations support it."
+  ]
+}

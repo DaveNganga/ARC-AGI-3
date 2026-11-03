@@ -554,8 +554,32 @@ class LLMClient:
             raise RuntimeError('ANTHROPIC_API_KEY is not set')
         client=anthropic.Anthropic()
         t0=time.time()
+        # Current Claude models reject temperature and always think (thinking tokens count toward
+        # max_tokens), so 500 tokens would truncate replies. Effort is set explicitly; override
+        # with ANTHROPIC_EFFORT. See stronger_ai_s5/CLAUDE_RUN_NOTES.md.
+        # The prompt never lists the reply fields; the Ollama path enforces them with a JSON schema
+        # (`format`). Give Claude the same schema via structured outputs, minus the length/number
+        # limits structured outputs does not accept (_validate still checks action and confidence).
+        output_schema={
+            'type':'object',
+            'properties':{
+                'selected_action':{'type':'string','enum':list(obs['available_actions'])},
+                'rationale':{'type':'string'},
+                'leading_rules':{
+                    'type':'object',
+                    'properties':{k:{'type':'array','items':{'type':'string'}} for k in ['P','G','M','T','I','S']},
+                    'additionalProperties':False
+                },
+                'confidence':{'type':'number'},
+                'believes_solved':{'type':'boolean'}
+            },
+            'required':['selected_action','rationale','leading_rules','confidence','believes_solved'],
+            'additionalProperties':False
+        }
         response=client.messages.create(
-            model=self.model, max_tokens=500, temperature=0, system=SYSTEM_PROMPT,
+            model=self.model, max_tokens=16000, system=SYSTEM_PROMPT,
+            output_config={'effort':os.getenv('ANTHROPIC_EFFORT','medium'),
+                           'format':{'type':'json_schema','schema':output_schema}},
             messages=[{'role':'user','content':self._prompt(obs,schema,prior)}])
         self.calls+=1; self.total_model_seconds += time.time()-t0
         usage=getattr(response,'usage',None)

@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import hashlib
 import os
-from dataclasses import asdict
+import time
+import traceback
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -11,123 +13,92 @@ from typing import Any, Callable
 
 from .arc_encoding import ArcEncoding
 from .arc_environment import ArcEnvironment
-from .arc_models import ArcBelief, ArcComparisonTrace, ArcEpisodeTrace, ArcReflection, ArcTurn
-from .arc_objective import (
-    action_signature,
-    build_arc_costs,
-    grounded_goal_score,
-    grounded_goal_tokens,
-    score_arc_actions,
+from .arc_models import (
+    ArcActionCandidate,
+    ArcComparisonTrace,
+    ArcEpisodeTrace,
+    ArcProposal,
+    ArcTurn,
+    proposal_from_dict,
+    reflection_from_dict,
 )
+from .arc_objective import action_signature, build_arc_costs, grounded_goal_score, score_arc_actions
 from .arc_reasoner import ArcReasoner, CachingArcReasoner
 from .search import ClassicalSearch, QAOASearch
+from .session import (
+    ConnectivityTimeout,
+    ReplayDivergence,
+    RunJournal,
+    always_connected,
+    classify_failure,
+    restore_environment,
+    wait_for_connectivity,
+)
 
 
 CONDITIONS = ("llm_only", "qahs_classical", "qahs_qaoa")
 MOVEMENT_ACTIONS = frozenset({"ACTION1", "ACTION2", "ACTION3", "ACTION4"})
-MOVEMENT_PERSISTENCE_STEPS = 3
 OVERRIDE_MARGIN = 0.30
 GROUNDED_OVERRIDE_MARGIN = 0.65
-MODEL_COMMITMENT_STEPS = 3
 
 
-def harness_flags() -> dict[str, bool]:
-    return {
-        "grounded_goals": os.environ.get("QAHS_GROUNDED_GOALS", "1") != "0",
-        "override_safety": os.environ.get("QAHS_OVERRIDE_SAFETY", "1") != "0",
-        "commitment_window": os.environ.get("QAHS_COMMITMENT_WINDOW", "1") != "0",
-        "shadow_mode": os.environ.get("QAHS_SHADOW_MODE", "0") == "1",
-    }
-
-
-def meaningful_change_kind(before, after, cells_changed: int, levels_delta: int) -> str:
-    if after.terminal:
-        return "terminal"
-    if levels_delta > 0:
-        return "progress"
-    if cells_changed > 0:
-        return "state_change"
-    if after.raw_frame_count > 1 and any(frame != before.frame for frame in after.animation_frames):
-        return "cosmetic_animation"
-    return "no_change"
+def movement_persistence_is_safe(
+    action_type: str, cells_changed: int, levels_delta: int, terminal: bool,
+    prediction_matches: bool, strategy_reset: bool = False,
+) -> bool:
+    """Continue movement only while the observed evidence still supports it."""
+    return (
+        action_type in MOVEMENT_ACTIONS and cells_changed > 0 and levels_delta == 0
+        and not terminal and prediction_matches and not strategy_reset
+    )
 
 
 def safe_override_choice(
     proposal, encoding, costs, valid, selector_candidate_id: str, diagnostics: dict,
-    history: list[dict], flags: dict[str, bool], commitment: tuple[str, int | None, int | None, int] | None,
-) -> tuple[str, dict, tuple[str, int | None, int | None, int] | None]:
-    """Require material evidence before replacing a concrete model policy."""
+    history: list[dict], flags: dict[str, bool], commitment,
+):
+    """Keep a grounded model plan unless search finds materially stronger evidence."""
     model_id = proposal.recommended_candidate_id
     selector_id = selector_candidate_id
     model_candidate = next(item for item in proposal.action_candidates if item.candidate_id == model_id)
     selector_candidate = next(item for item in proposal.action_candidates if item.candidate_id == selector_id)
     model_states = [encoding.encode(h.id, model_id) for h in encoding.hypotheses if valid[encoding.encode(h.id, model_id)]]
+    selector_states = [encoding.encode(h.id, selector_id) for h in encoding.hypotheses if valid[encoding.encode(h.id, selector_id)]]
     model_index = min(model_states, key=lambda index: costs[index])
-    model_hypothesis_id = encoding.decode(model_index)[0]
-    paired_model_hypothesis = next(item for item in proposal.hypotheses if item.id == model_hypothesis_id)
+    selector_index = min(selector_states, key=lambda index: costs[index])
     model_hypothesis = max(
         proposal.hypotheses,
-        key=lambda item: (
-            item.role in {"goal", "interaction", "terminal"},
-            item.predictions.get(model_id, "UNKNOWN").upper() in {"PROGRESS", "TERMINAL"},
-            grounded_goal_score(item),
-            item.confidence,
-        ),
+        key=lambda item: (item.role in {"goal", "interaction", "terminal"}, grounded_goal_score(item), item.confidence),
     )
-    selected_states = [encoding.encode(h.id, selector_id) for h in encoding.hypotheses if valid[encoding.encode(h.id, selector_id)]]
-    selector_index = min(selected_states, key=lambda index: costs[index])
-    advantage = float(costs[model_index] - costs[selector_index])
     grounded = (
         model_hypothesis.role in {"goal", "interaction", "terminal"}
         and grounded_goal_score(model_hypothesis) >= 0.5
         and model_candidate.expected_progress >= 0.4
     )
+    advantage = float(costs[model_index] - costs[selector_index])
+    different_action = (selector_candidate.action_type, selector_candidate.x, selector_candidate.y) != (
+        model_candidate.action_type, model_candidate.x, model_candidate.y
+    )
     diagnostics.update({
         "model_recommended_candidate_id": model_id,
         "selector_candidate_id": selector_id,
-        "model_recommendation_cost": float(costs[model_index]),
-        "model_paired_hypothesis_id": paired_model_hypothesis.id,
-        "model_grounded_hypothesis_id": model_hypothesis.id,
         "selector_advantage": advantage,
-        "model_goal_grounding": round(grounded_goal_score(model_hypothesis), 6),
         "model_recommendation_grounded": grounded,
-        "override_opportunity": (selector_candidate.action_type, selector_candidate.x, selector_candidate.y)
-        != (model_candidate.action_type, model_candidate.x, model_candidate.y),
+        "override_opportunity": different_action,
     })
-    if flags["shadow_mode"]:
+    if flags.get("shadow_mode"):
         diagnostics.update({"override_permitted": False, "override_category": "shadow", "override_reason": "shadow_mode"})
         return model_id, diagnostics, commitment
-    if commitment and flags["commitment_window"]:
-        action_type, x, y, remaining = commitment
-        if grounded and (model_candidate.action_type, model_candidate.x, model_candidate.y) != (action_type, x, y):
-            diagnostics["model_commitment"] = "released_on_grounded_replan"
-            commitment = None
-        match = next((item for item in proposal.action_candidates if (item.action_type, item.x, item.y) == (action_type, x, y)), None)
-        if commitment and match:
-            diagnostics.update({"override_permitted": False, "override_category": "commitment", "override_reason": "validated_model_policy"})
-            remaining -= 1
-            return match.candidate_id, diagnostics, (action_type, x, y, remaining) if remaining > 0 else None
-        commitment = None
-    if selector_id == model_id:
+    if selector_id == model_id or not different_action:
         diagnostics.update({"override_permitted": False, "override_category": "none", "override_reason": "selector_agreed"})
         return selector_id, diagnostics, commitment
-    if not diagnostics["override_opportunity"]:
-        diagnostics.update({"override_permitted": False, "override_category": "none", "override_reason": "same_physical_action"})
-        return selector_id, diagnostics, commitment
-    recent_override = any(item.get("override_permitted") for item in history[-2:])
     threshold = GROUNDED_OVERRIDE_MARGIN if grounded else OVERRIDE_MARGIN
-    if recent_override:
+    if any(item.get("override_permitted") for item in history[-2:]):
         threshold += 0.20
-    permitted = not flags["override_safety"] or advantage >= threshold
-    selected_hypothesis_id = encoding.decode(selector_index)[0]
-    selected_hypothesis = next(item for item in proposal.hypotheses if item.id == selected_hypothesis_id)
-    exact_index = diagnostics.get("exact_minimum_index")
-    exact_action = encoding.decode(int(exact_index))[1] if exact_index is not None and encoding.decode(int(exact_index)) else selector_id
-    category = ("approximation" if selector_id != exact_action else
-                "goal" if selected_hypothesis.role in {"goal", "terminal", "interaction"} else "evidence")
+    permitted = not flags.get("override_safety", True) or advantage >= threshold
     diagnostics.update({
         "override_permitted": permitted,
-        "override_category": category if permitted else "blocked",
+        "override_category": "evidence" if permitted else "blocked",
         "override_reason": "evidence_margin_met" if permitted else "insufficient_evidence_margin",
         "override_required_margin": threshold,
     })
@@ -147,23 +118,60 @@ def changed_cell_count(before: tuple[tuple[int, ...], ...], after: tuple[tuple[i
     )
 
 
-def movement_persistence_is_safe(
-    action_type: str,
-    cells_changed: int,
-    levels_delta: int,
-    terminal: bool,
-    prediction_matches: bool,
-    strategy_reset: bool = False,
-) -> bool:
-    """Continue only a bounded, visibly productive, predictable movement burst."""
-    return (
-        action_type in MOVEMENT_ACTIONS
-        and cells_changed > 0
-        and levels_delta == 0
-        and not terminal
-        and prediction_matches
-        and not strategy_reset
-    )
+def condition_order(seed: int) -> list[str]:
+    """Rotate which condition fills the shared cache first so no condition is always first."""
+    shift = seed % len(CONDITIONS)
+    return list(CONDITIONS[shift:] + CONDITIONS[:shift])
+
+
+@dataclass
+class _Decision:
+    proposal: ArcProposal
+    selected: ArcActionCandidate
+    score_rows: list[dict[str, Any]]
+    diagnostics: dict[str, Any]
+    model_calls: int
+    usage: dict[str, int]
+
+
+def _add_usage(total: dict[str, int], usage: dict[str, int] | None) -> dict[str, int]:
+    for key, value in (usage or {}).items():
+        total[key] = total.get(key, 0) + int(value)
+    return total
+
+
+def _decide(reasoner: ArcReasoner, condition: str, observation, history: list[dict], seed: int, turn_number: int) -> _Decision:
+    proposal = reasoner.propose(observation, history)
+    model_calls = int(getattr(reasoner, "last_call_count", 1))
+    usage = _add_usage({}, getattr(reasoner, "last_usage", None))
+    scores = score_arc_actions(proposal, history, frame_signature(observation.frame))
+
+    if condition == "llm_only":
+        candidate_id = proposal.recommended_candidate_id
+        diagnostics = {
+            "backend": "llm_recommendation",
+            "reason": proposal.recommendation_reason,
+            "quantum_used": False,
+        }
+    else:
+        encoding = ArcEncoding(proposal.hypotheses, proposal.action_candidates)
+        costs, valid, cost_diagnostics = build_arc_costs(encoding, proposal, scores, history)
+        backend = ClassicalSearch() if condition == "qahs_classical" else QAOASearch(
+            depth=2, restarts=3, maxiter=80, shots=512, seed=seed + turn_number
+        )
+        result = backend.select(encoding, scores, costs, valid)
+        candidate_id = str(result.action)
+        diagnostics = {
+            **cost_diagnostics,
+            **result.diagnostics,
+            "backend": result.backend,
+            "quantum_used": condition == "qahs_qaoa",
+            "hypothesis_id": result.hypothesis_id,
+            "decision_qubits": encoding.total_bits,
+        }
+
+    selected = next(candidate for candidate in proposal.action_candidates if candidate.candidate_id == candidate_id)
+    return _Decision(proposal, selected, [asdict(row) for row in scores], diagnostics, model_calls, usage)
 
 
 def run_arc_episode(
@@ -173,399 +181,277 @@ def run_arc_episode(
     source: str,
     seed: int = 0,
     max_steps: int = 12,
-    batch_id: str | None = None,
-    progress_callback: Callable[[dict[str, Any]], None] | None = None,
-    condition_index: int = 0,
-    condition_total: int = 1,
+    *,
+    journal: RunJournal | None = None,
+    environment_factory: Callable[[], ArcEnvironment] | None = None,
+    connectivity: Callable[[], bool] = always_connected,
+    prior: dict[str, Any] | None = None,
+    max_reconnects: int = 5,
+    max_wait: float = 900.0,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> ArcEpisodeTrace:
+    """Run one condition, committing every turn to ``journal`` and surviving dropped connections.
+
+    ``prior`` holds the journaled state of an interrupted episode (committed turns and the
+    reset-frame signature); the episode then continues from its last committed turn.
+    """
     if condition not in CONDITIONS:
         raise ValueError(f"Unknown condition: {condition}")
     started = perf_counter()
-    trace = ArcEpisodeTrace(
-        condition,
-        source,
-        environment.game_id,
-        seed,
-        action_budget=max_steps,
-        model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
-        reasoning_effort=os.environ.get("OPENAI_REASONING_EFFORT") if source == "arc" else None,
-        batch_id=batch_id,
-        harness_flags=harness_flags(),
-    )
-    flags = trace.harness_flags
-    history: list[dict] = []
-    next_proposal = None
-    queued_followup: tuple[str, int | None, int | None] | None = None
-    movement_persistence: tuple[str, int | None, int | None, int] | None = None
-    model_commitment: tuple[str, int | None, int | None, int] | None = None
-    emit = progress_callback or (lambda _event: None)
+    trace = ArcEpisodeTrace(condition, source, environment.game_id, seed)
+    prior = prior or {}
+    committed: list[dict[str, Any]] = list(prior.get("committed", []))
+    reset_signature: str | None = prior.get("reset_signature")
+    history: list[dict] = [record["history_entry"] for record in committed]
+    trace.turns = [record["turn_data"] for record in committed]  # type: ignore[misc]
+    previous_wall = float(committed[-1].get("wall_seconds", 0.0)) if committed else 0.0
+    trace.resumed = bool(committed)
+
+    current_env = environment
+    observation = None
+    restores = 0
+
+    def restore() -> None:
+        """(Re)build game state from committed turns; after the first attempt, on a fresh environment."""
+        nonlocal current_env, observation, reset_signature, restores
+        if restores:
+            if environment_factory is None:
+                raise RuntimeError("Connection lost and no environment factory is available to restore state")
+            current_env = environment_factory()
+        restores += 1
+        if committed:
+            observation = restore_environment(current_env, committed, reset_signature, frame_signature)
+            trace.replayed_actions += len(committed)
+            return
+        observation = current_env.reset()
+        signature = frame_signature(observation.frame)
+        if reset_signature is None:
+            reset_signature = signature
+            if journal:
+                journal.append("episode_started", condition=condition, reset_signature=signature)
+        elif signature != reset_signature:
+            raise ReplayDivergence("Initial frame differs from the journaled run")
+
+    def recover(error: Exception, stage: str, turn_number: int) -> None:
+        if classify_failure(error) != "transient":
+            raise error
+        event = {"turn": turn_number, "stage": stage, "error": f"{type(error).__name__}: {error}"}
+        if journal:
+            journal.append("connection_lost", condition=condition, **event)
+        event["waited_seconds"] = round(wait_for_connectivity(connectivity, max_wait, sleep=sleep), 2)
+        trace.connection_events.append(event)
+        if journal:
+            journal.append("resumed", condition=condition, turn=turn_number, waited_seconds=event["waited_seconds"])
+
     try:
-        observation = environment.reset()
-        emit({"phase": "condition_started", "condition": condition, "condition_index": condition_index,
-              "condition_total": condition_total, "turn": 0, "max_steps": max_steps})
-        for turn_number in range(1, max_steps + 1):
-            turn_started = perf_counter()
-            stage_started = perf_counter()
-            if next_proposal is None:
-                emit({"phase": "reasoning", "condition": condition, "condition_index": condition_index,
-                      "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps})
-                proposal = reasoner.propose(observation, history)
-                proposal_seconds = perf_counter() - stage_started
-                model_calls = int(getattr(reasoner, "last_call_count", 1))
-            else:
-                proposal, next_proposal = next_proposal, None
-                proposal_seconds, model_calls = 0.0, 0
-            before_signature = frame_signature(observation.frame)
-            stage_started = perf_counter()
-            emit({"phase": "objective", "condition": condition, "condition_index": condition_index,
-                  "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps})
-            scores = score_arc_actions(proposal, history, before_signature)
-            score_rows = [asdict(row) for row in scores]
-            encoding = ArcEncoding(proposal.hypotheses, proposal.action_candidates)
-            selected_hypotheses = [
-                int(turn.search_diagnostics["hypothesis_id"])
-                for turn in trace.turns
-                if turn.search_diagnostics.get("hypothesis_id") is not None
-            ]
-            costs, valid, cost_diagnostics = build_arc_costs(
-                encoding, proposal, scores, history, selected_hypotheses, max_steps=max_steps
-            )
-            objective_seconds = perf_counter() - stage_started
+        needs_restore = True
+        reconnects = 0
+        turn_number = len(committed) + 1
+        terminal = bool(committed) and committed[-1]["history_entry"]["state"].upper() in {"WIN", "GAME_OVER"}
+        while needs_restore and not terminal and turn_number <= max_steps:
+            try:
+                restore()
+                needs_restore = False
+            except ConnectivityTimeout:
+                raise
+            except Exception as error:
+                reconnects += 1
+                if reconnects > max_reconnects:
+                    raise
+                recover(error, "restore", turn_number)
 
-            stage_started = perf_counter()
-            emit({"phase": "selection", "condition": condition, "condition_index": condition_index,
-                  "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps})
-            if condition == "llm_only":
-                candidate_id = proposal.recommended_candidate_id
-                candidate_states = [
-                    encoding.encode(hypothesis.id, candidate_id)
-                    for hypothesis in encoding.hypotheses
-                    if valid[encoding.encode(hypothesis.id, candidate_id)]
-                ]
-                selected_index = min(candidate_states, key=lambda index: costs[index])
-                valid_states = [index for index, is_valid in enumerate(valid) if is_valid]
-                exact_index = min(valid_states, key=lambda index: costs[index])
-                selected_cost, exact_cost = float(costs[selected_index]), float(costs[exact_index])
-                diagnostics = {
-                    **cost_diagnostics,
-                    "backend": "llm_recommendation",
-                    "reason": proposal.recommendation_reason,
-                    "quantum_used": False,
-                    "evaluated_hypothesis_id": encoding.decode(selected_index)[0],
-                    "exact_minimum_cost": exact_cost,
-                    "selected_cost": selected_cost,
-                    "regret": selected_cost - exact_cost,
-                    "selected_rank": int(1 + sum(bool(costs[index] < selected_cost - 1e-12) for index in valid_states)),
-                    "exact_minimum_index": exact_index,
-                }
-            else:
-                backend = ClassicalSearch() if condition == "qahs_classical" else QAOASearch(
-                    depth=2, restarts=3, maxiter=80, shots=512, seed=seed + turn_number
-                )
-                result = backend.select(encoding, scores, costs, valid)
-                candidate_id = str(result.action)
-                diagnostics = {
-                    **result.diagnostics,
-                    **cost_diagnostics,
-                    "backend": result.backend,
-                    "quantum_used": condition == "qahs_qaoa",
-                    "hypothesis_id": result.hypothesis_id,
-                    "decision_qubits": encoding.total_bits,
-                }
-            valid_states = [index for index, is_valid in enumerate(valid) if is_valid]
-            exact_index = min(valid_states, key=lambda index: costs[index])
-            exact_decoded = encoding.decode(exact_index)
-            diagnostics["exact_minimum_index"] = exact_index
-            diagnostics["exact_hypothesis_id"] = exact_decoded[0]
-            diagnostics["exact_candidate_id"] = exact_decoded[1]
-            diagnostics["candidate_table"] = [
-                {
-                    "candidate_id": candidate.candidate_id,
-                    "action_type": candidate.action_type,
-                    "x": candidate.x, "y": candidate.y,
-                    "expected_progress": candidate.expected_progress, "risk": candidate.risk,
-                    "best_cost": float(min(
-                        costs[encoding.encode(hypothesis.id, candidate.candidate_id)]
-                        for hypothesis in encoding.hypotheses
-                        if valid[encoding.encode(hypothesis.id, candidate.candidate_id)]
-                    )),
-                }
-                for candidate in proposal.action_candidates
-            ]
-            decision_flags = flags if condition != "llm_only" else {
-                **flags, "override_safety": False, "commitment_window": False, "shadow_mode": False,
-            }
-            candidate_id, diagnostics, model_commitment = safe_override_choice(
-                proposal, encoding, costs, valid, candidate_id, diagnostics, history, decision_flags, model_commitment
-            )
-            model_deference = diagnostics.get("override_category") in {"shadow", "commitment", "blocked"}
-            if model_deference:
-                queued_followup = None
-                movement_persistence = None
-            selected_hypothesis_id = int(diagnostics.get("hypothesis_id", diagnostics.get("evaluated_hypothesis_id", 0)))
-            selected_hypothesis = next(item for item in proposal.hypotheses if item.id == selected_hypothesis_id)
-            family = str(cost_diagnostics.get("canonical_families", {}).get(str(selected_hypothesis_id), f"{selected_hypothesis.role}-{selected_hypothesis_id}"))
-            transfer_attempt = False
-            if history and int(history[-1].get("levels_delta", 0)) > 0 and not history[-1].get("transfer_attempted"):
-                prior = history[-1]
-                matching = next((item for item in proposal.action_candidates
-                                 if item.action_type == prior.get("action_type") and item.x == prior.get("x") and item.y == prior.get("y")), None)
-                if matching is not None:
-                    candidate_id = matching.candidate_id
-                    transfer_attempt = True
-                    family = str(prior.get("goal_family", family))
-                    diagnostics["policy_transfer"] = "one_attempt"
-            was_followup = False
-            if queued_followup is not None and not transfer_attempt and not model_deference:
-                matching = next((item for item in proposal.action_candidates
-                                 if (item.action_type, item.x, item.y) == queued_followup), None)
-                if matching is not None:
-                    candidate_id = matching.candidate_id
-                    was_followup = True
-                    diagnostics["conditional_second_action"] = "executed"
-                else:
-                    diagnostics["conditional_second_action"] = "invalidated"
-                queued_followup = None
-            was_persistent = False
-            if movement_persistence is not None and not transfer_attempt and not was_followup and not model_deference:
-                action_type, x, y, remaining = movement_persistence
-                model_candidate = next(item for item in proposal.action_candidates
-                                       if item.candidate_id == proposal.recommended_candidate_id)
-                if (diagnostics.get("model_recommendation_grounded")
-                        and (model_candidate.action_type, model_candidate.x, model_candidate.y) != (action_type, x, y)):
-                    movement_persistence = None
-                    diagnostics["movement_persistence"] = "released_on_grounded_replan"
-                matching = next((item for item in proposal.action_candidates
-                                 if (item.action_type, item.x, item.y) == (action_type, x, y)), None)
-                if movement_persistence is not None and matching is not None:
-                    candidate_id = matching.candidate_id
-                    was_persistent = True
-                    remaining -= 1
-                    movement_persistence = (action_type, x, y, remaining) if remaining > 0 else None
-                    diagnostics["movement_persistence"] = "executed"
-                    diagnostics["movement_persistence_remaining"] = max(0, remaining)
-                else:
-                    movement_persistence = None
-                    if diagnostics.get("movement_persistence") != "released_on_grounded_replan":
-                        diagnostics["movement_persistence"] = "invalidated"
-            executed_states = [encoding.encode(item.id, candidate_id) for item in encoding.hypotheses
-                               if valid[encoding.encode(item.id, candidate_id)]]
-            if executed_states:
-                executed_index = min(executed_states, key=lambda index: costs[index])
-                selected_hypothesis_id = encoding.decode(executed_index)[0]
-                selected_hypothesis = next(item for item in proposal.hypotheses if item.id == selected_hypothesis_id)
-                family = str(cost_diagnostics.get("canonical_families", {}).get(
-                    str(selected_hypothesis_id), f"{selected_hypothesis.role}-{selected_hypothesis_id}"
-                ))
-                diagnostics["executed_hypothesis_id"] = selected_hypothesis_id
-            if transfer_attempt:
-                family = str(history[-1].get("goal_family", family))
-            selection_seconds = perf_counter() - stage_started
+        while not terminal and turn_number <= max_steps:
+            decision: _Decision | None = None
+            after = None
+            reflection = None
+            reflection_calls = 0
+            reflection_usage: dict[str, int] = {}
+            reconnects = 0
+            while reflection is None:
+                stage = "restore" if needs_restore else "propose"
+                try:
+                    if needs_restore:
+                        restore()
+                        needs_restore = False
+                    before = observation
+                    if decision is None:
+                        stage = "propose"
+                        decision = _decide(reasoner, condition, before, history, seed, turn_number)
+                    if after is None:
+                        stage = "step"
+                        after = current_env.step(decision.selected)
+                    stage = "reflect"
+                    reflection = reasoner.reflect(before, after, decision.proposal, decision.selected, history)
+                    reflection_calls = int(getattr(reasoner, "last_call_count", 1))
+                    reflection_usage = dict(getattr(reasoner, "last_usage", None) or {})
+                except ConnectivityTimeout:
+                    raise
+                except Exception as error:
+                    reconnects += 1
+                    if reconnects > max_reconnects:
+                        raise
+                    recover(error, stage, turn_number)
+                    if stage in ("step", "restore"):
+                        # The action may or may not have been applied: rebuild from committed turns only.
+                        after = None
+                        needs_restore = True
 
-            selected = next(candidate for candidate in proposal.action_candidates if candidate.candidate_id == candidate_id)
             before = observation
-            stage_started = perf_counter()
-            emit({"phase": "environment", "condition": condition, "condition_index": condition_index,
-                  "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps})
-            observation = environment.step(selected)
-            environment_seconds = perf_counter() - stage_started
+            observation = after
             cells_changed = changed_cell_count(before.frame, observation.frame)
-            levels_delta = observation.levels_completed - before.levels_completed
-            change_kind = meaningful_change_kind(before, observation, cells_changed, levels_delta)
-            frame_cells = max(1, sum(len(row) for row in before.frame))
-            expected_outcome = selected_hypothesis.predictions.get(selected.candidate_id, "UNKNOWN").upper()
-            actual_outcome = ("TERMINAL" if observation.terminal else "PROGRESS" if levels_delta > 0
-                              else "NO_CHANGE" if cells_changed == 0 else "CHANGE")
-            prediction_matches = expected_outcome == actual_outcome or (
-                actual_outcome == "CHANGE" and expected_outcome in {"MOVE", "CHANGE"}
-            )
-            diagnostics["meaningful_change"] = change_kind
-            diagnostics["intervention_outcome"] = (
-                "helpful" if diagnostics.get("override_permitted") and levels_delta > 0 else
-                "harmful" if diagnostics.get("override_permitted") and change_kind in {"no_change", "cosmetic_animation"} else
-                "neutral" if diagnostics.get("override_permitted") else "not_applicable"
-            )
-            review_reasons = []
-            if turn_number == 1 or (turn_number % 3 == 0 and not was_persistent):
-                review_reasons.append("periodic")
-            if observation.terminal or levels_delta > 0:
-                review_reasons.append("progress")
-            if not prediction_matches:
-                review_reasons.append("prediction_miss")
-            if selected.action_type == "ACTION6":
-                review_reasons.append("interaction")
-            if cells_changed / frame_cells >= 0.15:
-                review_reasons.append("major_change")
-            if cost_diagnostics.get("stagnation_pressure", 0) >= 1.0:
-                review_reasons.append("strategy_reset")
-            stage_started = perf_counter()
-            emit({"phase": "review", "condition": condition, "condition_index": condition_index,
-                  "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps})
-            if not review_reasons and turn_number < max_steps:
-                reflection = ArcReflection(
-                    "Routine evidence updated locally.", observation.event,
-                    tuple(ArcBelief(item.id, item.statement, item.confidence, "supported" if prediction_matches else "uncertain",
-                                    f"{selected.candidate_id} produced {actual_outcome}", item.object_role, item.rule,
-                                    item.goal_condition, item.falsification, item.role)
-                          for item in proposal.hypotheses),
-                    "Continue the validated plan until a meaningful event or scheduled review.",
-                )
-                next_proposal = proposal
-                reasoner.last_call_count = 0
-                diagnostics["reasoning_trigger"] = "local_routine_update"
-                if (not was_followup and not was_persistent and selected.action_type not in MOVEMENT_ACTIONS
-                        and selected.risk <= 0.25 and selected.next_action_type in observation.available_actions):
-                    queued_followup = (selected.next_action_type, selected.next_x, selected.next_y)
-                    diagnostics["conditional_second_action"] = "queued"
-            elif observation.terminal or turn_number == max_steps:
-                reflection = reasoner.reflect(before, observation, proposal, selected, history)
-            else:
-                reflection, next_proposal = reasoner.review_and_propose(before, observation, proposal, selected, history)
-            if review_reasons:
-                diagnostics["reasoning_trigger"] = ",".join(review_reasons)
-            reflection_seconds = perf_counter() - stage_started
-            model_calls += int(getattr(reasoner, "last_call_count", 1))
-            persistence_safe = movement_persistence_is_safe(
-                selected.action_type,
-                cells_changed,
-                levels_delta,
-                observation.terminal,
-                prediction_matches,
-                strategy_reset="strategy_reset" in review_reasons,
-            )
-            model_candidate = next(item for item in proposal.action_candidates
-                                   if item.candidate_id == proposal.recommended_candidate_id)
-            if (condition != "llm_only" and flags["commitment_window"] and selected.action_type == model_candidate.action_type
-                    and selected.x == model_candidate.x and selected.y == model_candidate.y
-                    and diagnostics.get("model_recommendation_grounded") and persistence_safe):
-                model_commitment = (selected.action_type, selected.x, selected.y, MODEL_COMMITMENT_STEPS)
-                diagnostics["model_commitment"] = "queued"
-            elif levels_delta > 0 or observation.terminal or not prediction_matches or change_kind in {"no_change", "cosmetic_animation"}:
-                model_commitment = None
-            if was_persistent:
-                if not persistence_safe:
-                    movement_persistence = None
-                    diagnostics["movement_persistence"] = "stopped"
-            elif persistence_safe:
-                movement_persistence = (
-                    selected.action_type,
-                    selected.x,
-                    selected.y,
-                    MOVEMENT_PERSISTENCE_STEPS,
-                )
-                diagnostics["movement_persistence"] = "queued"
-                diagnostics["movement_persistence_remaining"] = MOVEMENT_PERSISTENCE_STEPS
-            elif selected.action_type not in MOVEMENT_ACTIONS:
-                movement_persistence = None
-            changed_coordinates = [
-                [x, y]
-                for y, (before_row, after_row) in enumerate(zip(before.frame, observation.frame))
-                for x, (old, new) in enumerate(zip(before_row, after_row))
-                if old != new
-            ][:64]
             belief_ledger = [asdict(item) for item in reflection.beliefs]
-            if levels_delta > 0:
-                credit = 0.8
-                for prior in reversed(history):
-                    if prior.get("goal_family") != family:
-                        break
-                    prior["progress_credit"] = round(credit, 6)
-                    credit *= 0.8
-            history.append({
+            selected = decision.selected
+            history_entry = {
                 "turn": turn_number,
                 "candidate_id": selected.candidate_id,
                 "action_type": selected.action_type,
                 "x": selected.x,
                 "y": selected.y,
-                "next_action_type": selected.next_action_type,
-                "next_x": selected.next_x,
-                "next_y": selected.next_y,
                 "action_signature": action_signature(selected),
-                "before_frame_signature": before_signature,
+                "before_frame_signature": frame_signature(before.frame),
                 "after_frame_signature": frame_signature(observation.frame),
                 "changed_cells": cells_changed,
-                "changed_coordinates": changed_coordinates,
-                "levels_delta": levels_delta,
+                "levels_delta": observation.levels_completed - before.levels_completed,
                 "hypotheses": [
-                    {
-                        "id": item.id,
-                        "statement": item.statement,
-                        "confidence": item.confidence,
-                        "predictions": item.predictions,
-                        "object_role": item.object_role,
-                        "rule": item.rule,
-                        "goal_condition": item.goal_condition,
-                        "falsification": item.falsification,
-                        "role": item.role,
-                    }
-                    for item in proposal.hypotheses
+                    {"id": item.id, "statement": item.statement, "confidence": item.confidence}
+                    for item in decision.proposal.hypotheses
                 ],
                 "reflection": reflection.summary,
                 "belief_ledger": belief_ledger,
                 "next_focus": reflection.next_focus,
                 "result": observation.event,
                 "state": observation.state,
-                "selected_role": selected_hypothesis.role,
-                "goal_family": family,
-                "goal_signature_tokens": sorted(grounded_goal_tokens(selected_hypothesis)),
-                "grounded_goal": asdict(selected_hypothesis.grounded_goal),
-                "meaningful_change": change_kind,
-                "prediction_matches": prediction_matches,
-                "executed_model_recommendation": selected.candidate_id == proposal.recommended_candidate_id,
-                "override_permitted": bool(diagnostics.get("override_permitted")),
-                "override_category": diagnostics.get("override_category"),
-                "intervention_outcome": diagnostics.get("intervention_outcome"),
-                "transfer_attempted": transfer_attempt,
-                "strategy_reset": bool(cost_diagnostics.get("stagnation_pressure", 0) >= 1.0),
-                "movement_persistence": diagnostics.get("movement_persistence"),
-                "progress_credit": 1.0 if levels_delta > 0 else 0.0,
-            })
-            trace.turns.append(ArcTurn(
+            }
+            turn = ArcTurn(
                 turn=turn_number,
                 observation_before=before,
-                proposal=proposal,
+                proposal=decision.proposal,
                 condition=condition,
                 selected_candidate=selected,
-                action_scores=score_rows,
-                search_diagnostics=diagnostics,
+                action_scores=decision.score_rows,
+                search_diagnostics=decision.diagnostics,
                 observation_after=observation,
                 reflection=reflection,
-                model_calls=model_calls,
+                model_calls=decision.model_calls + reflection_calls,
                 timings={
-                    "proposal_seconds": proposal_seconds,
-                    "objective_seconds": objective_seconds,
-                    "selection_seconds": selection_seconds,
-                    "environment_seconds": environment_seconds,
-                    "reflection_seconds": reflection_seconds,
-                    "turn_seconds": perf_counter() - turn_started,
+                    "selection_seconds": 0.0,
+                    "reasoning_seconds": 0.0,
+                    "reflection_seconds": 0.0,
                 },
-            ))
-            emit({"phase": "turn_completed", "condition": condition, "condition_index": condition_index,
-                  "condition_total": condition_total, "turn": turn_number, "max_steps": max_steps,
-                  "state": observation.state, "levels": observation.levels_completed,
-                  "turn_seconds": perf_counter() - turn_started})
-            if observation.terminal:
-                break
-        trace.success = observation.success
+                token_usage=_add_usage(dict(decision.usage), reflection_usage),
+            )
+            history.append(history_entry)
+            trace.turns.append(turn)
+            record = {
+                "turn": turn_number,
+                "candidate": asdict(selected),
+                "after_signature": history_entry["after_frame_signature"],
+                "history_entry": history_entry,
+                "turn_data": asdict(turn),
+                "wall_seconds": previous_wall + perf_counter() - started,
+            }
+            committed.append(record)
+            if journal:
+                journal.append("turn_committed", condition=condition, **record)
+            terminal = observation.terminal
+            turn_number += 1
+
+        final_state = committed[-1]["history_entry"]["state"].upper() if committed else str(observation.state).upper()
+        trace.success = final_state == "WIN"
+        if trace.success:
+            trace.stop_reason = "success"
+        elif final_state == "GAME_OVER":
+            trace.stop_reason = "game_over"
+        else:
+            trace.stop_reason = "budget_exhausted"
     except Exception as error:
-        trace.error = f"{type(error).__name__}: run failed; internal details omitted"
-    outcomes = [turn.search_diagnostics.get("intervention_outcome") for turn in trace.turns]
-    trace.intervention_summary = {
-        "opportunities": sum(
-            bool(turn.search_diagnostics.get("override_opportunity"))
-            for turn in trace.turns
-        ),
-        "permitted": sum(bool(turn.search_diagnostics.get("override_permitted")) for turn in trace.turns),
-        "blocked": sum(turn.search_diagnostics.get("override_category") == "blocked" for turn in trace.turns),
-        "helpful": outcomes.count("helpful"),
-        "neutral": outcomes.count("neutral"),
-        "harmful": outcomes.count("harmful"),
-    }
-    trace.wall_seconds = perf_counter() - started
-    emit({"phase": "condition_completed", "condition": condition, "condition_index": condition_index,
-          "condition_total": condition_total, "turn": len(trace.turns), "max_steps": max_steps,
-          "success": trace.success, "error": bool(trace.error)})
+        # Private traces keep full details; export_dashboard_runs.py redacts them before publishing.
+        trace.error = f"{type(error).__name__}: {error}"
+        trace.error_traceback = traceback.format_exc()
+        trace.stop_reason = "error"
+    trace.wall_seconds = previous_wall + perf_counter() - started
+    if journal:
+        journal.append(
+            "episode_finished",
+            condition=condition,
+            success=trace.success,
+            stop_reason=trace.stop_reason,
+            error=trace.error,
+            error_traceback=trace.error_traceback,
+            wall_seconds=trace.wall_seconds,
+            resumed=trace.resumed,
+            replayed_actions=trace.replayed_actions,
+            connection_events=trace.connection_events,
+        )
     return trace
+
+
+def _episode_from_journal(events: list[dict], condition: str, source: str, game_id: str, seed: int) -> ArcEpisodeTrace:
+    finished = next(item for item in events if item["event"] == "episode_finished" and item["condition"] == condition)
+    turns = [item["turn_data"] for item in events if item["event"] == "turn_committed" and item["condition"] == condition]
+    return ArcEpisodeTrace(
+        condition, source, game_id, seed,
+        turns=turns,  # type: ignore[arg-type]
+        success=finished["success"],
+        wall_seconds=finished["wall_seconds"],
+        error=finished["error"],
+        error_traceback=finished["error_traceback"],
+        stop_reason=finished["stop_reason"],
+        resumed=finished["resumed"],
+        replayed_actions=finished["replayed_actions"],
+        connection_events=finished["connection_events"],
+    )
+
+
+def _prior_from_journal(events: list[dict], condition: str) -> dict[str, Any]:
+    started = next((item for item in events if item["event"] == "episode_started" and item["condition"] == condition), None)
+    return {
+        "reset_signature": started["reset_signature"] if started else None,
+        "committed": [item for item in events if item["event"] == "turn_committed" and item["condition"] == condition],
+    }
+
+
+def shared_reasoner(reasoner: ArcReasoner, journal: RunJournal | None) -> CachingArcReasoner:
+    """Wrap a reasoner in the matched-input cache, journaling fresh responses and restoring old ones."""
+    def record(kind: str, key: str, value: Any) -> None:
+        if journal:
+            journal.append("model_response", kind=kind, key=key, value=value)
+
+    cache = CachingArcReasoner(reasoner, on_new_entry=record)
+    for item in journal.load() if journal else []:
+        if item["event"] == "model_response":
+            decode = proposal_from_dict if item["kind"] == "proposal" else reflection_from_dict
+            cache.prime(item["kind"], item["key"], decode(item["value"]))
+    return cache
+
+
+def run_arc_conditions(
+    conditions: list[str],
+    environment_factory: Callable[[], ArcEnvironment],
+    reasoner: ArcReasoner,
+    source: str,
+    game_id: str,
+    seed: int = 0,
+    max_steps: int = 12,
+    *,
+    journal: RunJournal | None = None,
+    **episode_options: Any,
+) -> dict[str, ArcEpisodeTrace]:
+    """Run (or resume) conditions in order; finished episodes are rebuilt from the journal."""
+    events = journal.load() if journal else []
+    traces = {}
+    for condition in conditions:
+        if any(item["event"] == "episode_finished" and item["condition"] == condition for item in events):
+            traces[condition] = _episode_from_journal(events, condition, source, game_id, seed)
+            continue
+        traces[condition] = run_arc_episode(
+            environment_factory(), reasoner, condition, source, seed, max_steps,
+            journal=journal,
+            environment_factory=environment_factory,
+            prior=_prior_from_journal(events, condition),
+            **episode_options,
+        )
+    return traces
 
 
 def run_arc_comparison(
@@ -575,20 +461,32 @@ def run_arc_comparison(
     game_id: str,
     seed: int = 0,
     max_steps: int = 12,
-    batch_id: str | None = None,
-    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    *,
+    journal: RunJournal | None = None,
+    extra_settings: dict[str, Any] | None = None,
+    **episode_options: Any,
 ) -> ArcComparisonTrace:
-    shared_reasoner = CachingArcReasoner(reasoner_factory())
-    without = run_arc_episode(environment_factory(), shared_reasoner, "llm_only", source, seed, max_steps, batch_id, progress_callback, 0, 3)
-    with_classical = run_arc_episode(environment_factory(), shared_reasoner, "qahs_classical", source, seed, max_steps, batch_id, progress_callback, 1, 3)
-    with_qahs = run_arc_episode(environment_factory(), shared_reasoner, "qahs_qaoa", source, seed, max_steps, batch_id, progress_callback, 2, 3)
+    batch_id = episode_options.pop("batch_id", None)
+    # Progress reporting belongs to the dashboard's versioned runners; the
+    # resumable core accepts it harmlessly for API compatibility.
+    episode_options.pop("progress_callback", None)
+    reasoner = reasoner_factory()
+    order = condition_order(seed)
+    episodes = run_arc_conditions(
+        order, environment_factory, shared_reasoner(reasoner, journal), source, game_id, seed, max_steps,
+        journal=journal, **episode_options,
+    )
+    settings = dict(getattr(getattr(reasoner, "caller", None), "settings", {}) or {})
+    settings.update(extra_settings or {})
     return ArcComparisonTrace(
-        source, game_id, seed, without, with_classical, with_qahs,
+        source, game_id, seed,
+        episodes["llm_only"], episodes["qahs_classical"], episodes["qahs_qaoa"],
         action_budget=max_steps,
         model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
         reasoning_effort=os.environ.get("OPENAI_REASONING_EFFORT") if source == "arc" else None,
         batch_id=batch_id,
-        harness_flags=harness_flags(),
+        model_settings=settings,
+        condition_order=order,
     )
 
 
@@ -598,11 +496,9 @@ def save_arc_trace(trace: ArcComparisonTrace | ArcEpisodeTrace, directory: str |
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     kind = "comparison" if isinstance(trace, ArcComparisonTrace) else trace.condition
     safe = lambda value: "".join(char.lower() if char.isalnum() else "-" for char in str(value)).strip("-") or "unknown"
-    batch = safe(trace.batch_id or "unbatched")
-    model = safe(trace.model or "unrecorded")
     path = directory / (
-        f"{timestamp}__{safe(trace.harness_version)}__{batch}__{safe(trace.game_id)}"
-        f"__seed-{trace.seed:02d}__actions-{trace.action_budget}__{model}__{safe(kind)}.json"
+        f"{timestamp}__{safe(trace.harness_version)}__{safe(trace.batch_id or 'unbatched')}__{safe(trace.game_id)}"
+        f"__seed-{trace.seed:02d}__actions-{trace.action_budget}__{safe(trace.model or 'unrecorded')}__{safe(kind)}.json"
     )
     path.write_text(json.dumps(trace.to_dict(), indent=2), encoding="utf-8")
     return path

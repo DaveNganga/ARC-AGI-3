@@ -141,12 +141,17 @@ ARC_REVIEW_SCHEMA: dict[str, Any] = {
 }
 
 
-def compact_history(history: list[dict[str, Any]], limit: int = 8) -> list[dict[str, Any]]:
+def compact_history_rows(history: list[dict[str, Any]], limit: int = 8) -> list[dict[str, Any]]:
     """Keep decision evidence but omit old hypothesis and prediction matrices."""
     fields = ("turn", "candidate_id", "action_type", "x", "y", "next_action_type", "next_x", "next_y",
               "changed_cells", "changed_coordinates", "levels_delta", "reflection", "next_focus", "result", "state",
               "selected_role", "goal_family", "grounded_goal", "meaningful_change", "strategy_reset", "transfer_attempted")
     return [{key: row[key] for key in fields if key in row} for row in history[-limit:]]
+
+
+def compact_history(history: list[dict[str, Any]], limit: int = 8) -> str:
+    rows = compact_history_rows(history, limit)
+    return json.dumps(rows, separators=(",", ":")) if rows else "none"
 
 
 def normalize_role(role: str, row: dict[str, Any]) -> str:
@@ -390,9 +395,34 @@ def compact_plan_catalog(catalog: tuple[ArcActionCandidate, ...]) -> dict[str, l
 
 
 class OpenAIArcReasoner:
-    def __init__(self, caller: Any):
+    def __init__(self, caller: Any, retry_delay: float = 1.0):
         self.caller = caller
         self.last_call_count = 0
+        self.last_retry_count = 0
+        self.retry_delay = retry_delay
+
+    def _call_json(self, prompt: str, schema: dict[str, Any], name: str,
+                   images: list[str] | None = None) -> dict[str, Any]:
+        from .retry import call_with_retries
+
+        def request():
+            try:
+                return self.caller.call_json(prompt, schema, name, images=images or None)
+            except TypeError as error:
+                if "images" not in str(error):
+                    raise
+                return self.caller.call_json(prompt, schema, name)
+
+        def validated():
+            payload = request()
+            if name == "arc_qahs_proposal" and not payload.get("action_candidates"):
+                raise ValueError("proposal contained no action candidates")
+            return payload
+
+        payload, retries = call_with_retries(validated, base_delay=self.retry_delay)
+        self.last_retry_count = retries
+        self.last_call_count = retries + 1
+        return payload
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
         self.last_call_count = 1
@@ -425,7 +455,7 @@ Recent evidence (old prediction matrices intentionally omitted):
 {compact_history(history)}
 """
         images = observation_images(observation)
-        payload = self.caller.call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal", images=images or None)
+        payload = self._call_json(prompt, ARC_PROPOSAL_SCHEMA, "arc_qahs_proposal", images)
         return parse_proposal(payload, observation.available_actions, catalog)
 
     def reflect(
@@ -450,7 +480,7 @@ After: state={after.state}, levels={after.levels_completed}, event={after.event}
 Recent evidence: {compact_history(history, 6)}
 """
         images = observation_images(before, 2) + observation_images(after, 4)
-        payload = self.caller.call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection", images=images)
+        payload = self._call_json(prompt, ARC_REFLECTION_SCHEMA, "arc_qahs_reflection", images)
         payload = {**payload, "summary": "Beliefs updated from the observed action.", "observed_effect": after.event}
         return merge_reflection(previous_ledger, proposal, payload)
 
@@ -461,7 +491,7 @@ Recent evidence: {compact_history(history, 6)}
         self.last_call_count = 1
         previous_ledger = history[-1].get("belief_ledger", []) if history else []
         changed = [[x, y] for y, (a, b) in enumerate(zip(before.frame, after.frame)) for x, (old, new) in enumerate(zip(a, b)) if old != new][:64]
-        evidence = compact_history(history) + [{"turn": len(history) + 1, "candidate_id": selected.candidate_id,
+        evidence = compact_history_rows(history) + [{"turn": len(history) + 1, "candidate_id": selected.candidate_id,
             "action_type": selected.action_type, "changed_cells": len(changed), "changed_coordinates": changed,
             "levels_delta": after.levels_completed - before.levels_completed, "result": after.event, "state": after.state}]
         catalog = generate_plan_catalog(after, evidence)
@@ -481,7 +511,7 @@ Available actions: {list(after.available_actions)}
 Next compact plan catalog: {compact_plan_catalog(catalog)}
 """
         images = observation_images(before, 2) + observation_images(after, 4)
-        payload = self.caller.call_json(prompt, ARC_REVIEW_SCHEMA, "arc_qahs_review_plan", images=images)
+        payload = self._call_json(prompt, ARC_REVIEW_SCHEMA, "arc_qahs_review_plan", images)
         reflection_payload = {**payload["reflection"], "summary": "Beliefs updated from the observed action.",
                               "observed_effect": after.event}
         reflection = merge_reflection(previous_ledger, proposal, reflection_payload)
@@ -652,21 +682,36 @@ class DemoArcReasoner:
 class CachingArcReasoner:
     """Reuse identical proposals across matched conditions for a fairer comparison."""
 
-    def __init__(self, reasoner: ArcReasoner):
+    def __init__(self, reasoner: ArcReasoner, on_new_entry=None):
         self.reasoner = reasoner
+        self.on_new_entry = on_new_entry
         self.cache: dict[str, ArcProposal] = {}
         self.reflection_cache: dict[str, ArcReflection] = {}
         self.review_cache: dict[str, tuple[ArcReflection, ArcProposal]] = {}
         self.last_call_count = 0
+        self.last_usage: dict[str, int] = {}
+
+    def prime(self, kind: str, key: str, value) -> None:
+        if kind == "proposal":
+            self.cache[key] = value
+        elif kind == "reflection":
+            self.reflection_cache[key] = value
+
+    def _fresh(self, kind: str, key: str, value) -> None:
+        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
+        self.last_usage = dict(getattr(self.reasoner, "last_usage", None) or {})
+        if self.on_new_entry:
+            self.on_new_entry(kind, key, value)
 
     def propose(self, observation: ArcObservation, history: list[dict[str, Any]]) -> ArcProposal:
         key = json.dumps({"observation": asdict(observation), "history": history}, sort_keys=True)
         if key in self.cache:
             self.last_call_count = 0
+            self.last_usage = {}
             return self.cache[key]
         proposal = self.reasoner.propose(observation, history)
-        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
         self.cache[key] = proposal
+        self._fresh("proposal", key, proposal)
         return proposal
 
     def reflect(
@@ -686,10 +731,11 @@ class CachingArcReasoner:
         }, sort_keys=True)
         if key in self.reflection_cache:
             self.last_call_count = 0
+            self.last_usage = {}
             return self.reflection_cache[key]
         reflection = self.reasoner.reflect(before, after, proposal, selected, history)
-        self.last_call_count = int(getattr(self.reasoner, "last_call_count", 1))
         self.reflection_cache[key] = reflection
+        self._fresh("reflection", key, reflection)
         return reflection
 
     def review_and_propose(

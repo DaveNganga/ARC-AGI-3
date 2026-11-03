@@ -12,7 +12,8 @@ class GreedyBeliefSearch:
     name = "greedy_baseline"
 
     def select(self, encoding: Encoding, action_scores: list[ActionScore], costs: np.ndarray, valid: np.ndarray) -> SearchResult:
-        row = max(action_scores, key=lambda s: (s.utility, s.action.value))
+        # Legacy actions are Enums; ARC actions are plain candidate IDs.
+        row = max(action_scores, key=lambda s: (s.utility, str(getattr(s.action, "value", s.action))))
         candidates = []
         for hypothesis in encoding.hypotheses:
             idx = encoding.encode(hypothesis.id, row.action)

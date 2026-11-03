@@ -112,6 +112,7 @@ class ArcTurn:
     reflection: ArcReflection | None = None
     model_calls: int = 1
     timings: dict[str, float] = field(default_factory=dict)
+    token_usage: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -132,6 +133,11 @@ class ArcEpisodeTrace:
     input_representation: str = INPUT_REPRESENTATION
     harness_flags: dict[str, bool] = field(default_factory=dict)
     intervention_summary: dict[str, int] = field(default_factory=dict)
+    error_traceback: str | None = None
+    stop_reason: str = ""
+    resumed: bool = False
+    replayed_actions: int = 0
+    connection_events: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -152,6 +158,43 @@ class ArcComparisonTrace:
     batch_id: str | None = None
     input_representation: str = INPUT_REPRESENTATION
     harness_flags: dict[str, bool] = field(default_factory=dict)
+    model_settings: dict[str, Any] = field(default_factory=dict)
+    condition_order: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def candidate_from_dict(data: dict[str, Any]) -> ArcActionCandidate:
+    return ArcActionCandidate(**data)
+
+
+def observation_from_dict(data: dict[str, Any]) -> ArcObservation:
+    animation = tuple(tuple(tuple(row) for row in frame) for frame in data.get("animation_frames", ()))
+    return ArcObservation(**{
+        **data,
+        "available_actions": tuple(data["available_actions"]),
+        "frame": tuple(tuple(row) for row in data["frame"]),
+        "animation_frames": animation,
+    })
+
+
+def proposal_from_dict(data: dict[str, Any]) -> ArcProposal:
+    hypotheses = []
+    for item in data["hypotheses"]:
+        grounded = item.get("grounded_goal", {})
+        hypotheses.append(ArcHypothesis(**{**item, "grounded_goal": ArcGroundedGoal(**grounded)}))
+    return ArcProposal(
+        summary=data["summary"], hypotheses=tuple(hypotheses),
+        action_candidates=tuple(candidate_from_dict(item) for item in data["action_candidates"]),
+        recommended_candidate_id=data["recommended_candidate_id"],
+        recommendation_reason=data["recommendation_reason"],
+    )
+
+
+def reflection_from_dict(data: dict[str, Any]) -> ArcReflection:
+    return ArcReflection(
+        summary=data["summary"], observed_effect=data["observed_effect"],
+        beliefs=tuple(ArcBelief(**item) for item in data["beliefs"]),
+        next_focus=data["next_focus"],
+    )

@@ -408,25 +408,25 @@
       "     1  2  3  4  5  6  7  8",
       " 1   .  .  .  #  .  .  .  .",
       " 2   .  .  .  #  .  .  .  .",
-      " 3   .  .  .  #  .  .  ?  .",
-      " 4   .  .  .  .  .  .  .  .",
+      " 3   .  .  1  #  .  .  ?  .",
+      " 4   .  .  .  .  .  .  2  .",
       " 5   .  .  .  #  .  .  .  .",
       " 6   .  .  .  #  .  .  .  .",
       " 7   .  ?  .  .  .  .  .  .",
-      " 8   .  1  .  #  .  .  2  ."
+      " 8   .  .  .  #  .  .  .  ."
     ],
     "objects": [
       {
         "object_id": "11",
         "symbol": "1",
-        "row": 8,
-        "col": 2,
+        "row": 3,
+        "col": 3,
         "active": false
       },
       {
         "object_id": "21",
         "symbol": "2",
-        "row": 8,
+        "row": 4,
         "col": 7,
         "active": false
       },
@@ -687,7 +687,7 @@
     },
     {
       "evidence_id": "E6",
-      "action": "DOWN",
+      "action": "RIGHT",
       "observation_delta": {
         "moved": [
           {
@@ -697,8 +697,8 @@
               2
             ],
             "to": [
-              5,
-              2
+              4,
+              3
             ]
           },
           {
@@ -708,8 +708,8 @@
               7
             ],
             "to": [
-              6,
-              7
+              5,
+              8
             ]
           }
         ],
@@ -726,29 +726,18 @@
     },
     {
       "evidence_id": "E7",
-      "action": "DOWN",
+      "action": "RIGHT",
       "observation_delta": {
         "moved": [
           {
             "object": "11",
             "from": [
-              5,
-              2
+              4,
+              3
             ],
             "to": [
-              6,
-              2
-            ]
-          },
-          {
-            "object": "21",
-            "from": [
-              6,
-              7
-            ],
-            "to": [
-              7,
-              7
+              4,
+              4
             ]
           }
         ],
@@ -765,29 +754,29 @@
     },
     {
       "evidence_id": "E8",
-      "action": "DOWN",
+      "action": "UP",
       "observation_delta": {
         "moved": [
           {
             "object": "11",
             "from": [
-              6,
-              2
+              4,
+              4
             ],
             "to": [
-              7,
-              2
+              3,
+              4
             ]
           },
           {
             "object": "21",
             "from": [
-              7,
-              7
+              5,
+              8
             ],
             "to": [
-              8,
-              7
+              4,
+              8
             ]
           }
         ],
@@ -804,18 +793,29 @@
     },
     {
       "evidence_id": "E9",
-      "action": "DOWN",
+      "action": "LEFT",
       "observation_delta": {
         "moved": [
           {
             "object": "11",
             "from": [
-              7,
-              2
+              3,
+              4
             ],
             "to": [
-              8,
-              2
+              3,
+              3
+            ]
+          },
+          {
+            "object": "21",
+            "from": [
+              4,
+              8
+            ],
+            "to": [
+              4,
+              7
             ]
           }
         ],
@@ -832,10 +832,10 @@
     }
   ],
   "action_test_counts": {
-    "UP": 1,
-    "DOWN": 6,
-    "LEFT": 1,
-    "RIGHT": 1
+    "UP": 2,
+    "DOWN": 2,
+    "LEFT": 2,
+    "RIGHT": 3
   },
   "decision_objective": [
     "Choose the next action expected to provide the greatest useful information for discriminating among currently plausible hypotheses.",

@@ -3,125 +3,99 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
+import re
 from pathlib import Path
 
-from .arc_agent import (
-    run_arc_comparison,
-    run_arc_conditions,
-    save_arc_trace,
-    shared_reasoner,
-)
-from .arc_environment import ARC_MODES, ArcSDKEnvironment, DemoArcEnvironment
+from .arc_agent import run_arc_comparison, run_arc_episode, save_arc_trace
+from .arc_environment import ArcSDKEnvironment, DemoArcEnvironment
 from .arc_reasoner import DemoArcReasoner, OpenAIArcReasoner
-from .frame_encoding import FRAME_FORMATS
 from .providers.openai_provider import OpenAIJSONCaller
-from .session import SESSIONS_DIR, always_connected, new_journal, open_journal, tcp_probe, unfinished_runs
+from .compositional import CompositionalReasoner, run_compositional_comparison
+from .information_gain import InformationGainReasoner, run_information_gain_comparison
+from .structured_world_models import StructuredWorldReasoner, run_structured_world_comparison
 
-RUN_PARAMETERS = ("source", "game", "condition", "seed", "max_steps", "frame_format", "arc_mode")
 
-
-def build_parser() -> argparse.ArgumentParser:
+def main() -> None:
     parser = argparse.ArgumentParser(description="Run ARC-AGI-3 with and without QAHS")
     parser.add_argument("--source", choices=("demo", "arc"), default="demo")
     parser.add_argument("--game", default="ls20", help="ARC-AGI-3 game ID")
     parser.add_argument("--condition", choices=("compare", "llm_only", "qahs_classical", "qahs_qaoa"), default="compare")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-steps", type=int, default=12)
-    parser.add_argument("--frame-format", choices=FRAME_FORMATS, default="runs", help="How the grid is written for the model")
-    parser.add_argument("--arc-mode", choices=ARC_MODES, default="online", help="offline plays games from environment_files/")
+    parser.add_argument("--batch", default="", help="Batch ID for grouping matched runs, such as batch-01")
+    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-6-luna"))
+    parser.add_argument("--reasoning-effort", choices=("none", "low", "medium", "high", "xhigh", "max"),
+                        default=os.environ.get("OPENAI_REASONING_EFFORT", "medium"))
     parser.add_argument("--output-dir", default="output/arc_runs")
-    parser.add_argument("--sessions-dir", default=str(SESSIONS_DIR))
-    parser.add_argument("--resume", metavar="RUN_ID", help="Continue an interrupted run ('latest' for the newest)")
-    parser.add_argument("--max-wait", type=float, default=900.0, help="Seconds to wait for a dropped connection")
-    return parser
+    parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v11"))
+    args = parser.parse_args()
+    os.environ["OPENAI_MODEL"] = args.model
+    os.environ["OPENAI_REASONING_EFFORT"] = args.reasoning_effort
+    batch_id = args.batch.strip().lower() or None
+    if batch_id and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,31}", batch_id):
+        parser.error("--batch must use lowercase letters, numbers, and hyphens (32 characters maximum)")
 
-
-def setup(params: dict):
-    """Return environment factory, reasoner factory, connectivity check, and game ID for a run."""
-    if params["source"] == "demo":
-        fault = os.environ.get("QAHS_FAULT_AT_STEP")
-        DemoArcEnvironment.fault_at_step = int(fault) if fault else None
-        DemoArcEnvironment._steps_taken = 0
-        return (
-            lambda: DemoArcEnvironment(params["seed"]),
-            DemoArcReasoner,
-            always_connected,
-            DemoArcEnvironment.game_id,
-        )
-    recordings = Path("output/arc_recordings")
-    mode = params["arc_mode"]
-    hosts = ["api.openai.com"] + (["three.arcprize.org"] if mode == "online" else [])
-    return (
-        lambda: ArcSDKEnvironment(params["game"], params["seed"], recordings, mode=mode),
-        lambda: OpenAIArcReasoner(OpenAIJSONCaller(), frame_format=params["frame_format"]),
-        tcp_probe(hosts),
-        params["game"],
-    )
-
-
-def episode_summary(trace) -> dict:
-    return {
-        "success": trace.success,
-        "actions": len(trace.turns),
-        "stop_reason": trace.stop_reason,
-        "resumed": trace.resumed,
-        "connection_events": len(trace.connection_events),
-        "error": trace.error,
-    }
-
-
-def main() -> None:
-    args = build_parser().parse_args()
-
-    if args.resume:
-        journal = open_journal(args.resume, args.sessions_dir)
-        started = journal.first("run_started")
-        if started is None:
-            sys.exit(f"Run {journal.run_id} has no run_started record and cannot be resumed.")
-        if journal.finished:
-            sys.exit(f"Run {journal.run_id} already finished.")
-        params = {key: started[key] for key in RUN_PARAMETERS}
-        print(f"Resuming {journal.run_id} ({params['condition']}, {params['game'] if params['source'] == 'arc' else 'demo'})")
+    if args.source == "demo":
+        game_id = DemoArcEnvironment.game_id
+        environment_factory = lambda: DemoArcEnvironment(args.seed)
+        reasoner_factory = DemoArcReasoner
     else:
-        params = {key: getattr(args, key) for key in RUN_PARAMETERS}
-        pending = unfinished_runs(args.sessions_dir)
-        if pending:
-            print(f"Unfinished run found: {pending[0]}. Resume it with: qahs-arc --resume {pending[0]}", file=sys.stderr)
-        game_id = DemoArcEnvironment.game_id if params["source"] == "demo" else params["game"]
-        journal = new_journal(game_id, args.sessions_dir)
-        journal.append("run_started", **params)
+        game_id = args.game
+        recordings = Path("output/arc_recordings")
+        environment_factory = lambda: ArcSDKEnvironment(args.game, args.seed, recordings)
+        reasoner_factory = lambda: OpenAIArcReasoner(OpenAIJSONCaller(args.model, args.reasoning_effort))
 
-    environment_factory, reasoner_factory, connectivity, game_id = setup(params)
-    options = {"journal": journal, "connectivity": connectivity, "max_wait": args.max_wait}
-    extra = {"frame_format": params["frame_format"], "arc_mode": params["arc_mode"]} if params["source"] == "arc" else {}
-
-    try:
-        if params["condition"] == "compare":
-            trace = run_arc_comparison(
-                environment_factory, reasoner_factory, params["source"], game_id,
-                params["seed"], params["max_steps"], extra_settings=extra, **options,
-            )
-            summary = {
-                "without_qahs": episode_summary(trace.without_qahs),
-                "with_classical": episode_summary(trace.with_classical),
-                "with_qahs": episode_summary(trace.with_qahs),
-            }
-        else:
-            reasoner = shared_reasoner(reasoner_factory(), journal)
-            trace = run_arc_conditions(
-                [params["condition"]], environment_factory, reasoner, params["source"], game_id,
-                params["seed"], params["max_steps"], **options,
-            )[params["condition"]]
-            summary = episode_summary(trace)
-    except KeyboardInterrupt:
-        sys.exit(f"\nInterrupted. Nothing committed is lost. Resume with: qahs-arc --resume {journal.run_id}")
+    if args.condition == "compare" and args.harness == "v12" and args.source == "arc":
+        progress = lambda event: print("QAHS_PROGRESS " + json.dumps(event), flush=True)
+        caller = OpenAIJSONCaller(args.model, args.reasoning_effort)
+        trace = run_structured_world_comparison(
+            environment_factory, StructuredWorldReasoner(caller), args.source, game_id, args.seed,
+            args.max_steps, batch_id, progress,
+        )
+        summary = {
+            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
+            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
+            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
+        }
+    elif args.condition == "compare" and args.harness == "v11" and args.source == "arc":
+        progress = lambda event: print("QAHS_PROGRESS " + json.dumps(event), flush=True)
+        caller = OpenAIJSONCaller(args.model, args.reasoning_effort)
+        trace = run_information_gain_comparison(
+            environment_factory, InformationGainReasoner(caller), args.source, game_id, args.seed,
+            args.max_steps, batch_id, progress,
+        )
+        summary = {
+            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
+            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
+            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
+        }
+    elif args.condition == "compare" and args.harness == "v10" and args.source == "arc":
+        progress = lambda event: print("QAHS_PROGRESS " + json.dumps(event), flush=True)
+        caller = OpenAIJSONCaller(args.model, args.reasoning_effort)
+        trace = run_compositional_comparison(
+            environment_factory, CompositionalReasoner(caller), args.source, game_id, args.seed,
+            args.max_steps, batch_id, progress,
+        )
+        summary = {
+            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
+            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
+            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
+        }
+    elif args.condition == "compare":
+        progress = lambda event: print("QAHS_PROGRESS " + json.dumps(event), flush=True)
+        trace = run_arc_comparison(environment_factory, reasoner_factory, args.source, game_id, args.seed, args.max_steps, batch_id, progress)
+        summary = {
+            "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
+            "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
+            "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
+        }
+    else:
+        trace = run_arc_episode(environment_factory(), reasoner_factory(), args.condition, args.source, args.seed, args.max_steps, batch_id)
+        summary = {"success": trace.success, "actions": len(trace.turns), "error": trace.error}
 
     path = save_arc_trace(trace, args.output_dir)
-    journal.append("run_finished", trace=str(path))
     print(json.dumps(summary, indent=2))
     print(f"Trace: {path}")
-    print(f"Journal: {journal.path}")
 
 
 if __name__ == "__main__":

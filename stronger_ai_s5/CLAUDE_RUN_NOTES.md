@@ -49,3 +49,15 @@ python compare_s5_reports.py --llm claude_opus_5_5/s5_16m_llm_report.json \
 Environment: Python 3.13, qiskit 2.6.1, qiskit-aer 0.18.2 (24-qubit MPS check passed),
 anthropic SDK 2.4.0. `check_env.py`, the manifest audit and the 5 unit tests pass. The one-world
 smoke test solved in 3 actions (LLM-only) and 1 action (QAHS).
+
+## Run status (2026-11-03, 02:02 UTC): paused, Anthropic credit ran out
+
+- **LLM-only:** 15 of 18 episodes finished and committed (5 generalization, 3 adaptation,
+  transfer source plus 3 cold/warm pairs). The 3 robustness episodes did not run, so
+  `s5_16m_llm_report.json` has not been written yet. The commit titled "LLM-only paper results"
+  is this partial set.
+- **QAHS:** not started. The first call failed on credit. The commit titled "QAHS paper results"
+  holds only the prompt audit of that failed call (`qahs/generalization/audit_G01/prompt_turn_001.json`);
+  it is overwritten when the run resumes.
+- **To resume** after adding credit, rerun the commands above unchanged. `--resume` reuses the
+  15 finished episodes and runs only what is missing.

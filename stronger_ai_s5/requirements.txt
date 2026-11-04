@@ -1,6 +1,0 @@
-numpy
-scipy
-qiskit
-qiskit-aer
-openai
-anthropic

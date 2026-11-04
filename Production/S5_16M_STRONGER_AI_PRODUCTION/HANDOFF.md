@@ -2,7 +2,7 @@
 
 **Status (2026-11-03):** Qwen3:8B (instructor's local run) and Claude Opus 5.5 are complete for
 both conditions. The GPT column is waiting on our peer's report files.
-Everything is in `stronger_ai_s5/` on branch `claude/dazzling-goodall-4fc42q` of
+Everything is in `Production/S5_16M_STRONGER_AI_PRODUCTION/` on branch `claude/dazzling-goodall-4fc42q` of
 `abylAI02/ARC-AGI-3`.
 
 ## Results (instructor's metric definitions)

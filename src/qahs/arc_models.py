@@ -124,6 +124,7 @@ class ArcEpisodeTrace:
     turns: list[ArcTurn] = field(default_factory=list)
     success: bool = False
     wall_seconds: float = 0.0
+    comparable_seconds: float = 0.0
     error: str | None = None
     action_budget: int = 0
     model: str | None = None

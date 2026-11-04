@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument("--reasoning-effort", choices=("none", "low", "medium", "high", "xhigh", "max"),
                         default=os.environ.get("OPENAI_REASONING_EFFORT", "medium"))
     parser.add_argument("--output-dir", default="output/arc_runs")
-    parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v11"))
+    parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v12"))
     args = parser.parse_args()
     os.environ["OPENAI_MODEL"] = args.model
     os.environ["OPENAI_REASONING_EFFORT"] = args.reasoning_effort

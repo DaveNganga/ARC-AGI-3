@@ -13,7 +13,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <nav className="site-nav" aria-label="Primary navigation">
           <Link className="brand" href="/">QAHS</Link>
-          <div><Link href="/">About</Link><Link href="/results">Results</Link></div>
+          <div><Link href="/">About</Link><Link href="/results">Results</Link><Link href="/final">Final</Link></div>
         </nav>
         {children}
       </body>

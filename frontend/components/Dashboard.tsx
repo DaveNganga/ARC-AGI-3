@@ -5,14 +5,14 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 const LOCAL_RUNNER_URL = process.env.NEXT_PUBLIC_QAHS_RUNNER_URL ?? "http://127.0.0.1:8765";
 
 type Frame = number[][];
-type Candidate = { candidate_id: string; action_type: string; x?: number | null; y?: number | null; description?: string };
+type Candidate = { candidate_id: string; action_type: string; x?: number | null; y?: number | null; next_action_type?: string | null; next_x?: number | null; next_y?: number | null; description?: string };
 type Atom = { key?: string; kind: string; subject: string; value: string; target?: string | null; source?: string };
 type EntityMarker = { id: string; center: [number, number]; bounds?: [number, number, number, number]; color?: number; size?: number };
 type Hypothesis = { id?: number; statement?: string; confidence?: number; predictions?: Record<string, string> };
 type WorkingHypothesis = { statement?: string; focus_entity_ids?: string[]; target_candidate_id?: string; expected_effect?: string; success_signal?: string; falsification?: string };
 type PredictionRow = { candidate_id: string; outcome: string; confidence?: number };
-type PredictionMatrixRow = { hypothesis_id: number; statement: string; focus_entity_ids?: string[]; probability: number; predictions: PredictionRow[]; test_sequence?: string[]; sequence_target_state?: string; stop_condition?: string; persistence_candidate_id?: string; tracked_entity_id?: string; target_entity_id?: string; actuator_entity_id?: string; affected_entity_ids?: string[]; expected_relation_change?: string; confirmation_outcomes?: string[]; refutation_outcomes?: string[] };
-type Observation = { frame?: Frame; levels_completed?: number; event?: string };
+type PredictionMatrixRow = { hypothesis_id: number; statement: string; focus_entity_ids?: string[]; probability: number; predictions: PredictionRow[]; test_sequence?: string[]; sequence_target_state?: string; stop_condition?: string; persistence_candidate_id?: string; tracked_entity_id?: string; target_entity_id?: string; actuator_entity_id?: string; affected_entity_ids?: string[]; expected_relation_change?: string; confirmation_outcomes?: string[]; refutation_outcomes?: string[]; goal_component_id?: string; goal_lineage_action?: string };
+type Observation = { frame?: Frame; levels_completed?: number; win_levels?: number; state?: string; event?: string };
 type Reflection = {
   summary?: string;
   next_focus?: string;
@@ -24,12 +24,12 @@ type Turn = {
   observation_after: Observation;
   selected_candidate: Candidate;
   proposal: { recommended_candidate_id: string; recommendation_reason?: string; summary?: string; hypotheses?: Hypothesis[]; action_candidates?: Candidate[] };
-  search_diagnostics?: { quantum_used?: boolean; shots?: number; regret?: number; selected_rank?: number; exact_optimum_probability?: number; selector_candidate_id?: string; selector_advantage?: number; override_category?: string; composed_statement?: string; selected_atoms?: Atom[]; atom_catalog?: Atom[]; entity_catalog?: EntityMarker[]; after_entity_catalog?: EntityMarker[]; luna_working_hypothesis?: WorkingHypothesis | null; trajectory_status?: string; tracked_entity_id?: string | null; target_entity_id?: string | null; distance_delta?: number | null; frontier_position?: boolean; color_changed_cells?: number; prediction_matrix?: PredictionMatrixRow[]; hypothesis_probabilities_after?: Record<string, number>; selected_plan?: string[]; observed_outcome?: string; physical_outcome?: string; retired_hypotheses?: string[]; active_hypothesis_id?: number | null; procedure_target_state?: string; procedure_continued?: boolean; procedure_reframed?: boolean; procedure_evidence_status?: string; validated_for_level?: { hypothesis_id?: number; statement?: string; validated_for_level?: number; candidate_id?: string; predicted_outcome?: string; physical_outcome?: string; game_outcome?: string } | null; success_hypothesis_audit?: { verdict?: string; corrected_hypothesis?: string; transferable_relation?: string; interface_change?: string; next_level_test?: string } };
+  search_diagnostics?: { quantum_used?: boolean; shots?: number; regret?: number; selected_rank?: number; exact_optimum_probability?: number; selector_candidate_id?: string; selector_advantage?: number; override_category?: string; override_permitted?: boolean; composed_statement?: string; selected_atoms?: Atom[]; atom_catalog?: Atom[]; entity_catalog?: EntityMarker[]; after_entity_catalog?: EntityMarker[]; luna_working_hypothesis?: WorkingHypothesis | null; trajectory_status?: string; tracked_entity_id?: string | null; target_entity_id?: string | null; distance_delta?: number | null; frontier_position?: boolean; color_changed_cells?: number; prediction_matrix?: PredictionMatrixRow[]; hypothesis_probabilities_before?: Record<string, number>; hypothesis_probabilities_after?: Record<string, number>; selected_plan?: string[]; observed_outcome?: string; physical_outcome?: string; retired_hypotheses?: string[]; active_hypothesis_id?: number | null; forced_reconsideration?: boolean; procedure_target_state?: string; procedure_continued?: boolean; procedure_reframed?: boolean; procedure_evidence_status?: string; validated_for_level?: { hypothesis_id?: number; statement?: string; validated_for_level?: number; candidate_id?: string; predicted_outcome?: string; physical_outcome?: string; game_outcome?: string } | null; success_hypothesis_audit?: { verdict?: string; corrected_hypothesis?: string; transferable_relation?: string; interface_change?: string; next_level_test?: string } };
   reflection?: Reflection | null;
   model_calls?: number;
   timings?: Record<string, number>;
 };
-type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; error?: string | null };
+type Episode = { condition: string; success?: boolean; turns?: Turn[]; wall_seconds?: number; comparable_seconds?: number; error?: string | null };
 type Run = {
   filename: string;
   benchmark?: string;
@@ -42,6 +42,7 @@ type Run = {
   harness_version?: string;
   input_representation?: string;
   batch_id?: string | null;
+  model_settings?: { comparison_integrity?: { comparison_valid?: boolean; initial_states_match?: boolean } };
   without_qahs: Episode;
   with_classical?: Episode;
   with_qahs: Episode;
@@ -77,8 +78,20 @@ function episodes(run: Run): [string, Episode][] {
 
 function turns(episode: Episode) { return episode.turns ?? []; }
 function levels(episode: Episode) { const t = turns(episode); return Number(t.at(-1)?.observation_after.levels_completed ?? 0); }
-function uniqueActions(episode: Episode) {
-  return new Set(turns(episode).map(({ selected_candidate: c }) => `${c.action_type}:${c.x ?? ""}:${c.y ?? ""}`)).size;
+function actionKey(candidate?: Candidate) {
+  if (!candidate) return "missing";
+  return [candidate.action_type, candidate.x ?? "", candidate.y ?? "", candidate.next_action_type ?? "", candidate.next_x ?? "", candidate.next_y ?? ""].join(":");
+}
+function uniqueActions(episode: Episode) { return new Set(turns(episode).map((turn) => actionKey(turn.selected_candidate))).size; }
+function explorationCoverage(episode: Episode) {
+  const attempted = new Set(turns(episode).map((turn) => actionKey(turn.selected_candidate)));
+  const offered = new Set(turns(episode).flatMap((turn) => turn.proposal.action_candidates ?? []).map(actionKey));
+  attempted.delete("missing");
+  offered.delete("missing");
+  // Older traces sometimes omit the offered catalog. Their attempted set is
+  // still an auditable lower bound on the action space seen in the trace.
+  const denominator = Math.max(attempted.size, offered.size, 1);
+  return 100 * attempted.size / denominator;
 }
 function changed(turn: Turn) {
   const before = turn.observation_before.frame ?? [];
@@ -87,9 +100,48 @@ function changed(turn: Turn) {
   before.forEach((row, y) => row.forEach((cell, x) => { if (after[y]?.[x] !== cell) count += 1; }));
   return count;
 }
-function usefulActions(episode: Episode) { return turns(episode).filter((turn) => changed(turn) > 0).length; }
+function posteriorShift(turn: Turn) {
+  const before = turn.search_diagnostics?.hypothesis_probabilities_before;
+  const after = turn.search_diagnostics?.hypothesis_probabilities_after;
+  if (!before || !after) return 0;
+  const ids = new Set([...Object.keys(before), ...Object.keys(after)]);
+  let distance = 0;
+  ids.forEach((id) => { distance += Math.abs(Number(before[id] ?? 0) - Number(after[id] ?? 0)); });
+  return distance / 2;
+}
+function evidenceYielding(turn: Turn) {
+  const diagnostics = turn.search_diagnostics;
+  const levelsChanged = Number(turn.observation_after.levels_completed ?? 0) !== Number(turn.observation_before.levels_completed ?? 0);
+  const terminalSignal = ["WIN", "GAME_OVER", "FAILED"].includes(String(turn.observation_after.state ?? "").toUpperCase());
+  const physical = String(diagnostics?.physical_outcome ?? diagnostics?.observed_outcome ?? "").toUpperCase();
+  const informativePhysicalChange = Boolean(physical && !["NO_CHANGE", "UNKNOWN", "NONE"].includes(physical));
+  const procedureEvidence = String(diagnostics?.procedure_evidence_status ?? "").toLowerCase();
+  const explicitBeliefUpdate = ["refuted", "contradicted", "supported", "confirmed", "validated", "validated_for_level", "weakened"].includes(procedureEvidence)
+    || Boolean(diagnostics?.validated_for_level)
+    || Boolean(diagnostics?.retired_hypotheses?.length)
+    || posteriorShift(turn) >= .05;
+  // Frame change is only a fallback for old traces that predate classified
+  // physical outcomes; it is not allowed to override an explicit NO_CHANGE.
+  const legacyFrameEvidence = !physical && changed(turn) > 0;
+  return levelsChanged || terminalSignal || informativePhysicalChange || explicitBeliefUpdate || legacyFrameEvidence;
+}
+function usefulActions(episode: Episode) { return turns(episode).filter(evidenceYielding).length; }
+function usefulActionRate(episode: Episode) { return turns(episode).length ? 100 * usefulActions(episode) / turns(episode).length : 0; }
+function actionsPerLevel(episode: Episode) { return levels(episode) > 0 ? turns(episode).length / levels(episode) : null; }
 function overrides(episode: Episode) {
-  return turns(episode).filter((turn) => turn.selected_candidate.candidate_id !== turn.proposal.recommended_candidate_id).length;
+  return turns(episode).filter((turn) => {
+    // Older V11/V12 traces marked every persisted step as another override.
+    // A continued procedure is execution of the original decision, not a new
+    // disagreement with Luna, so repair that interpretation at presentation.
+    if (turn.search_diagnostics?.procedure_continued) return false;
+    return typeof turn.search_diagnostics?.override_permitted === "boolean"
+      ? turn.search_diagnostics.override_permitted
+      : turn.selected_candidate.candidate_id !== turn.proposal.recommended_candidate_id;
+  }).length;
+}
+function comparableTime(episode: Episode) {
+  const normalized = Number(episode.comparable_seconds ?? 0);
+  return normalized > 0 ? normalized : Number(episode.wall_seconds ?? 0);
 }
 function modelCalls(episode: Episode) { return turns(episode).reduce((sum, turn) => sum + Number(turn.model_calls ?? 1), 0); }
 function meanRegret(episode: Episode) {
@@ -119,20 +171,22 @@ function combinedScores(run: Run): Map<Episode, ScoreComponents> {
   return result;
 }
 
-const METRICS = [
-  { name: "Progress", about: "Number of game levels completed.", value: levels },
-  { name: "Efficiency", about: "Actions used; fewer is better when progress is equal.", value: (episode: Episode) => turns(episode).length },
-  { name: "Exploration", about: "Distinct action-and-location combinations attempted.", value: uniqueActions },
-  { name: "Useful actions", about: "Actions that visibly changed at least one grid cell.", value: usefulActions },
+type DisplayMetric = { name: string; about: string; value: (episode: Episode) => number | null; suffix?: string; decimals?: number; lowerIsBetter?: boolean };
+const METRICS: DisplayMetric[] = [
+  { name: "Progress", about: "Game-reported levels completed; visible movement alone does not count.", value: levels, decimals: 0 },
+  { name: "Efficiency", about: "Executed actions per completed level; lower is better and an unsolved run is not assigned a score.", value: actionsPerLevel, decimals: 1, lowerIsBetter: true },
+  { name: "Exploration", about: "Share of distinct physical actions attempted from the actions offered during this trace; breadth is descriptive, not automatically better.", value: explorationCoverage, suffix: "%", decimals: 0 },
+  { name: "Useful actions", about: "Share of actions yielding objective evidence: progress, terminal feedback, a classified state change, or a material belief update.", value: usefulActionRate, suffix: "%", decimals: 0 },
 ];
 
 const BATCH_METRICS = [
   { name: "Combined", about: "Exploratory v4 score: 50% progress, 20% action efficiency, 20% search quality, 10% call efficiency", value: (episode: Episode, run?: Run) => Math.round(run && supportsCombined(run) ? combinedScores(run).get(episode)?.combined ?? 0 : 0), suffix: "" },
   { name: "Progress", about: "Levels completed", value: levels, suffix: "" },
   { name: "Actions", about: "Actions used; lower is better when progress is equal", value: (episode: Episode) => turns(episode).length, suffix: "" },
-  { name: "Useful %", about: "Share of actions that visibly changed the grid", value: (episode: Episode) => turns(episode).length ? Math.round(100 * usefulActions(episode) / turns(episode).length) : 0, suffix: "%" },
-  { name: "LLM calls", about: "Proposal and reflection calls not served from cache", value: modelCalls, suffix: "" },
-  { name: "Time", about: "Total wall-clock seconds", value: (episode: Episode) => Math.round(Number(episode.wall_seconds ?? 0)), suffix: "s" },
+  { name: "Exploration %", about: "Share of the offered physical action space tested; breadth is descriptive rather than inherently good", value: (episode: Episode) => Math.round(explorationCoverage(episode)), suffix: "%" },
+  { name: "Useful %", about: "Share of actions that yielded objective environmental or belief-update evidence", value: (episode: Episode) => Math.round(usefulActionRate(episode)), suffix: "%" },
+  { name: "LLM calls", about: "Logical model requests; a shared cache hit still counts for each condition.", value: modelCalls, suffix: "" },
+  { name: "Time", about: "Comparable compute time with shared model-cache latency normalized.", value: (episode: Episode) => Math.round(comparableTime(episode)), suffix: "s" },
 ];
 
 function SetupMap({ run }: { run: Run }) {
@@ -163,7 +217,6 @@ function SetupMap({ run }: { run: Run }) {
 function ResultsChart({ run }: { run: Run }) {
   const conditions = episodes(run);
   const scores = combinedScores(run);
-  const max = Math.max(1, ...conditions.flatMap(([, episode]) => METRICS.map((metric) => metric.value(episode))));
   return (
     <section className="card results-card">
       <h2>Results</h2>
@@ -174,15 +227,24 @@ function ResultsChart({ run }: { run: Run }) {
             <div className="bars">
               {conditions.map(([label, episode]) => {
                 const value = metric.value(episode);
+                const available = conditions.map(([, item]) => metric.value(item)).filter((item): item is number => typeof item === "number" && Number.isFinite(item));
+                const largest = Math.max(1, ...available);
+                const positive = available.filter((item) => item > 0);
+                const smallestPositive = positive.length ? Math.min(...positive) : 1;
+                const relative = value === null ? 0 : metric.lowerIsBetter
+                  ? (value > 0 ? smallestPositive / value : 0)
+                  : value / largest;
+                const shown = value === null ? "—" : `${value.toFixed(metric.decimals ?? 0)}${metric.suffix ?? ""}`;
                 return (
-                  <div className="bar-slot" key={label} title={`${label}: ${value}. ${metric.about}`}>
-                    <span className="bar-value">{value}</span>
-                    <div className="bar" style={{ height: `${Math.max(value ? 8 : 2, (value / max) * 180)}px`, background: MODE_COLORS[label] }} />
+                  <div className="bar-slot" key={label} title={`${label}: ${shown}. ${metric.about}`}>
+                    <span className="bar-value">{shown}</span>
+                    <div className="bar" style={{ height: `${value === null ? 2 : Math.max(value ? 8 : 2, relative * 180)}px`, background: MODE_COLORS[label] }} />
                   </div>
                 );
               })}
             </div>
             <strong>{metric.name}</strong>
+            <small className="metric-definition">{metric.about}</small>
           </div>
         ))}
       </div>
@@ -193,7 +255,7 @@ function ResultsChart({ run }: { run: Run }) {
           <div className="summary-row" role="row" key={label}>
             <strong>{label}</strong><span>{modelCalls(episode)}</span>
             <span>{episode.condition === "llm_only" ? 0 : turns(episode).length}</span>
-            <span>{overrides(episode)}</span><span>{Number(episode.wall_seconds ?? 0).toFixed(1)}s</span>
+            <span>{overrides(episode)}</span><span>{comparableTime(episode).toFixed(1)}s</span>
           </div>
         ))}
       </div>
@@ -209,8 +271,9 @@ function BatchResults({ runs, batchId }: { runs: Run[]; batchId: string }) {
   const shownLabels = mode === "All" ? conditionLabels : [mode];
   const values = runs.flatMap((run) => episodes(run).filter(([label]) => shownLabels.includes(label)).map(([, episode]) => metric.value(episode, run)));
   const max = Math.max(1, ...values);
-  const signatures = new Set(runs.map((run) => [run.seed, run.action_budget, run.model, run.reasoning_effort, run.harness_version].join("|")));
+  const signatures = new Set(runs.map((run) => [run.seed, run.action_budget, run.model, run.reasoning_effort, run.harness_version, run.input_representation].join("|")));
   const solved = runs.reduce((sum, run) => sum + episodes(run).filter(([, episode]) => episode.success).length, 0);
+  const invalid = runs.filter((run) => run.model_settings?.comparison_integrity?.comparison_valid === false);
 
   return (
     <section className="card batch-card">
@@ -222,7 +285,8 @@ function BatchResults({ runs, batchId }: { runs: Run[]; batchId: string }) {
         </div>
       </div>
       <div className="batch-facts"><span><strong>{runs.length}</strong> games</span><span><strong>{solved}</strong> solved conditions</span><span><strong>{runs[0]?.seed ?? "—"}</strong> seed</span><span><strong>{runs[0]?.harness_version ?? "—"}</strong> harness</span></div>
-      {signatures.size > 1 && <p className="batch-warning">This batch mixes seed, budget, model, or harness settings. Interpret it cautiously.</p>}
+      {signatures.size > 1 && <p className="batch-warning">This batch mixes seed, budget, model, harness, or input-representation settings. Interpret it cautiously.</p>}
+      {invalid.length > 0 && <p className="batch-warning">{invalid.length} comparison{invalid.length === 1 ? " is" : "s are"} marked invalid and should be excluded from conclusions.</p>}
       <p className="metric-about">{metric.about}</p>
       <div className="batch-chart" role="img" aria-label={`${metric.name} across games in ${batchId}`}>
         {runs.map((run) => (
@@ -422,6 +486,119 @@ function Details({ run }: { run: Run }) {
   );
 }
 
+function winLevels(episode: Episode) {
+  return Math.max(0, ...turns(episode).flatMap((turn) => [
+    Number(turn.observation_before.win_levels ?? 0),
+    Number(turn.observation_after.win_levels ?? 0),
+  ]));
+}
+
+function generalizationScore(episode: Episode) {
+  const completed = levels(episode);
+  const total = winLevels(episode);
+  if (total > 0) return Math.min(1, completed / total);
+  return episode.success ? 1 : 0;
+}
+
+function adaptationScore(episode: Episode) {
+  const allTurns = turns(episode);
+  const budget = Math.max(1, allTurns.length);
+  const transitions = allTurns
+    .map((turn, index) => ({ turn, index }))
+    .filter(({ turn }) => Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0));
+  if (!transitions.length) return 0;
+  const scores = transitions.map(({ index }) => {
+    const recoveredAt = allTurns.findIndex((turn, candidateIndex) => candidateIndex > index && objectiveActionEvidence(turn));
+    const latency = recoveredAt > index ? recoveredAt - index : budget;
+    return Math.max(0, 1 - latency / budget);
+  });
+  return scores.reduce((sum, value) => sum + value, 0) / scores.length;
+}
+
+function noChange(turn: Turn) {
+  const physical = String(turn.search_diagnostics?.physical_outcome ?? turn.search_diagnostics?.observed_outcome ?? "").toUpperCase();
+  if (physical) return physical === "NO_CHANGE";
+  return changed(turn) === 0
+    && Number(turn.observation_after.levels_completed ?? 0) === Number(turn.observation_before.levels_completed ?? 0);
+}
+
+function objectiveActionEvidence(turn: Turn) {
+  const physical = String(turn.search_diagnostics?.physical_outcome ?? turn.search_diagnostics?.observed_outcome ?? "").toUpperCase();
+  const levelChanged = Number(turn.observation_after.levels_completed ?? 0) !== Number(turn.observation_before.levels_completed ?? 0);
+  const terminal = ["WIN", "GAME_OVER", "FAILED"].includes(String(turn.observation_after.state ?? "").toUpperCase());
+  if (levelChanged || terminal) return true;
+  if (physical) return !["NO_CHANGE", "UNKNOWN", "NONE"].includes(physical);
+  return changed(turn) > 0;
+}
+
+function autonomyScore(episode: Episode) {
+  const allTurns = turns(episode);
+  if (!allTurns.length) return 0;
+  let noChangeActions = 0;
+  let repeatedAfterNoChange = 0;
+  allTurns.forEach((turn) => {
+    if (noChange(turn)) noChangeActions += 1;
+  });
+  for (let index = 1; index < allTurns.length; index += 1) {
+    const previous = allTurns[index - 1];
+    const current = allTurns[index];
+    if (noChange(previous) && actionKey(previous.selected_candidate) === actionKey(current.selected_candidate)) repeatedAfterNoChange += 1;
+  }
+  const novelty = uniqueActions(episode) / allTurns.length;
+  const persistenceAvoidance = 1 - repeatedAfterNoChange / Math.max(1, noChangeActions);
+  const evidenceYield = allTurns.filter(objectiveActionEvidence).length / allTurns.length;
+  return (novelty + persistenceAvoidance + evidenceYield) / 3;
+}
+
+const CAPABILITIES = [
+  { name: "Generalization", symbol: "G", score: generalizationScore },
+  { name: "Adaptation", symbol: "A", score: adaptationScore },
+  { name: "Autonomy", symbol: "Au", score: autonomyScore },
+  { name: "Transfer", symbol: "T", score: () => 0 },
+  { name: "Robustness", symbol: "R", score: () => 0 },
+] as const;
+
+function capabilityScores(episode: Episode) {
+  return CAPABILITIES.map((capability) => Math.max(0, Math.min(1, capability.score(episode))));
+}
+
+function signedScore(value: number) {
+  if (Math.abs(value) < .0005) return "0.000";
+  return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
+}
+
+function CapabilityComparison({ run }: { run: Run }) {
+  const llm = run.without_qahs;
+  const quantum = run.with_qahs;
+  const llmScores = capabilityScores(llm);
+  const quantumScores = capabilityScores(quantum);
+  const llmSai = llmScores.reduce((sum, value) => sum + value, 0) / llmScores.length;
+  const quantumSai = quantumScores.reduce((sum, value) => sum + value, 0) / quantumScores.length;
+  return <section className="card capability-card">
+    <div className="capability-heading"><div><p className="section-number">Run-level capability scores</p><h2>Quantum compared with LLM</h2></div><p>Scores range from 0.000 to 1.000. Classical remains in the result charts as the selector baseline.</p></div>
+    <div className="capability-table" role="table" aria-label="Quantum and LLM capability comparison">
+      <div className="capability-row capability-head" role="row"><span>Metric</span><span>LLM only</span><span>LLM + Quantum QAHS</span><span>Difference</span></div>
+      {CAPABILITIES.map((capability, index) => {
+        const llmScore = llmScores[index];
+        const quantumScore = quantumScores[index];
+        return <div className="capability-row" role="row" key={capability.name}>
+          <strong>{capability.name} ({capability.symbol})</strong>
+          <span className="capability-number">{llmScore.toFixed(3)}</span>
+          <span className="capability-number">{quantumScore.toFixed(3)}</span>
+          <span className="capability-number">{signedScore(quantumScore - llmScore)}</span>
+        </div>;
+      })}
+      <div className="capability-row capability-total" role="row">
+        <strong>SAI proxy</strong>
+        <span className="capability-number">{llmSai.toFixed(3)}</span>
+        <span className="capability-number">{quantumSai.toFixed(3)}</span>
+        <span className="capability-number">{signedScore(quantumSai - llmSai)}</span>
+      </div>
+    </div>
+    <p className="metric-about capability-note">G is completed-level share; A is normalized recovery after a level transition; Au averages distinct physical-action rate, avoidance of repetition after no change, and objective environmental-evidence yield. T and R are 0.000 because this run does not contain the required paired conditions.</p>
+  </section>;
+}
+
 function CounterfactualPanel({ run }: { run: Run }) {
   const options = episodes(run).flatMap(([label, episode]) => turns(episode).flatMap((turn) => {
     const alternative = turn.search_diagnostics?.selector_candidate_id;
@@ -463,7 +640,7 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename?: string) => Prom
   const [actions, setActions] = useState(8);
   const [model, setModel] = useState("gpt-6-luna");
   const [reasoningEffort, setReasoningEffort] = useState("medium");
-  const [harness, setHarness] = useState("v11");
+  const [harness, setHarness] = useState("v12");
   const [batch, setBatch] = useState("batch-01");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState("");
@@ -628,6 +805,62 @@ function LocalRunPanel({ onComplete }: { onComplete: (filename?: string) => Prom
   );
 }
 
+type PickerOption = { value: string; label: string };
+
+function ResultPicker({ value, options, label, onChange }: { value: string; options: PickerOption[]; label: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [opensUp, setOpensUp] = useState(false);
+  const [menuHeight, setMenuHeight] = useState(320);
+  const root = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" }));
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  function toggle() {
+    if (!open && root.current) {
+      const bounds = root.current.getBoundingClientRect();
+      const below = window.innerHeight - bounds.bottom - 14;
+      const above = bounds.top - 14;
+      const useAbove = below < 260 && above > below;
+      setOpensUp(useAbove);
+      setMenuHeight(Math.max(160, Math.min(420, useAbove ? above : below)));
+    }
+    setOpen((current) => !current);
+  }
+
+  return <div className="run-picker" ref={root}>
+    <span className="sr-only">{label}</span>
+    <button type="button" className="run-picker-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={toggle}>
+      <span>{selected?.label ?? value}</span><i aria-hidden="true" />
+    </button>
+    {open && <div className={`run-picker-menu ${opensUp ? "opens-up" : ""}`} style={{ maxHeight: menuHeight }} role="listbox" aria-label={label}>
+      {options.map((option) => <button
+        type="button"
+        role="option"
+        aria-selected={option.value === value}
+        className={option.value === value ? "selected" : ""}
+        key={option.value}
+        onClick={() => { onChange(option.value); setOpen(false); }}
+      >{option.label}</button>)}
+    </div>}
+  </div>;
+}
+
 export default function Dashboard() {
   const [manifest, setManifest] = useState<ManifestItem[]>([]);
   const [filename, setFilename] = useState("");
@@ -659,7 +892,8 @@ export default function Dashboard() {
       /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
       /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host),
     );
-    void loadManifest();
+    const preferredRun = new URLSearchParams(window.location.search).get("run") ?? undefined;
+    void loadManifest(preferredRun);
   }, [loadManifest]);
   useEffect(() => {
     if (!filename) return;
@@ -695,11 +929,11 @@ export default function Dashboard() {
       <main>
         <header className="banner"><h1>QAHS: comparing LLM, classical search, and quantum search</h1></header>
         <div className="view-switch" role="group" aria-label="Result view"><button className={view === "single" ? "active" : ""} onClick={() => setView("single")}>Single run</button><button className={view === "batch" ? "active" : ""} onClick={() => setView("batch")} disabled={!batchIds.length}>Batch</button></div>
-        {view === "single" && manifest.length > 0 && <label className="run-select"><span className="sr-only">Saved experiment</span><select value={filename} onChange={(event) => setFilename(event.target.value)} aria-label="Saved experiment">{manifest.map((item) => <option value={item.filename} key={item.filename}>{item.label}</option>)}</select></label>}
-        {view === "batch" && batchIds.length > 0 && <label className="run-select"><span className="sr-only">Saved batch</span><select value={batchId} onChange={(event) => setBatchId(event.target.value)} aria-label="Saved batch">{batchIds.map((item) => <option key={item}>{item}</option>)}</select></label>}
+        {view === "single" && manifest.length > 0 && <ResultPicker value={filename} onChange={setFilename} label="Saved experiment" options={manifest.map((item) => ({ value: item.filename, label: item.label }))} />}
+        {view === "batch" && batchIds.length > 0 && <ResultPicker value={batchId} onChange={setBatchId} label="Saved batch" options={batchIds.map((item) => ({ value: item, label: item }))} />}
         {error && <p className="error">{error}</p>}
         {view === "single" && !run && !error && <p className="loading">Loading experiment…</p>}
-        {view === "single" && run && <><SetupMap run={run} /><ResultsChart run={run} />{isLocal && <CounterfactualPanel run={run} />}<Details run={run} /></>}
+        {view === "single" && run && <>{run.model_settings?.comparison_integrity?.comparison_valid === false && <p className="batch-warning">This matched comparison failed an integrity check and should not be used for conclusions.</p>}<SetupMap run={run} /><ResultsChart run={run} />{isLocal && <CounterfactualPanel run={run} />}<Details run={run} /><CapabilityComparison run={run} /></>}
         {view === "batch" && batchLoading && <p className="loading">Loading batch…</p>}
         {view === "batch" && !batchLoading && batchRuns.length > 0 && <BatchResults runs={batchRuns} batchId={batchId} />}
         {view === "batch" && !batchLoading && !batchIds.length && <p className="loading">New versioned batches will appear here.</p>}

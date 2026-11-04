@@ -104,7 +104,9 @@ class RetryTests(unittest.TestCase):
         reasoner = OpenAIArcReasoner(FlakyCaller([{"action_candidates": []}, VALID_PROPOSAL]), retry_delay=0)
         observation = ArcObservation("ls20", "NOT_FINISHED", 0, 1, ("ACTION1",), ((0,),))
         proposal = reasoner.propose(observation, [])
-        self.assertEqual(proposal.recommended_candidate_id, "a")
+        # The current harness expands the valid response into its deterministic
+        # plan catalog; this assertion is about retry recovery, not legacy IDs.
+        self.assertEqual(proposal.recommended_candidate_id, "plan-00")
         self.assertEqual(reasoner.last_call_count, 2)
         self.assertEqual(reasoner.last_retry_count, 1)
 
@@ -129,7 +131,7 @@ class EpisodeRecordTests(unittest.TestCase):
         self.assertNotEqual(traces[0].condition_order, traces[1].condition_order)
         for trace in traces:
             self.assertEqual(sorted(trace.condition_order), ["llm_only", "qahs_classical", "qahs_qaoa"])
-            self.assertEqual(trace.harness_version, "2")
+            self.assertEqual(trace.harness_version, "v7-grounded-goals")
             self.assertEqual(trace.without_qahs.stop_reason, "success")
             self.assertEqual(
                 [len(trace.without_qahs.turns), len(trace.with_classical.turns), len(trace.with_qahs.turns)],

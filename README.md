@@ -10,20 +10,18 @@ The project compares three decision methods while holding the game, seed, action
 
 The comparison asks whether changing the selection method improves progress, action efficiency, exploration, or computational cost. It does not assume that the quantum condition will win.
 
-The Group 2 assignment is in [`docs/TASK.md`](docs/TASK.md). For the condensed project concept and current evidence, see [`docs/CORE.md`](docs/CORE.md). The gap analysis and phased roadmap are in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md), short answers to each deliverable in [`docs/DELIVERABLES.md`](docs/DELIVERABLES.md), and planned-but-unstarted work in [`docs/BACKLOG.md`](docs/BACKLOG.md).
-
 ## Current reasoning loop
 
 Each condition uses the same six-stage loop:
 
 1. **Observe** the current ARC-AGI-3 grid and game state.
-2. **Propose** two to eight competing hypotheses and concrete tests.
-3. **Score** actions using information gain, expected progress, risk, novelty, and prior outcomes.
-4. **Select** an action using the assigned LLM, classical, or QAOA method.
+2. **Propose** eight to sixteen structured hypotheses over a deterministic catalog of up to 32 two-step plans.
+3. **Score** plans using information gain, expected progress, survival, risk, diversity, and prior outcomes.
+4. **Select** a plan using the assigned LLM, classical, or QAOA method, execute its first step, and replan from the new observation.
 5. **Act** in a separate instance of the same game and seed.
 6. **Reflect** on the result and update a persistent belief ledger.
 
-The post-action reflection is a second structured model call. It compares predicted and observed outcomes, then marks each belief as `supported`, `weakened`, `rejected`, `uncertain`, or `new`. The next turn receives that ledger so evidence is carried forward instead of silently replacing the hypothesis set.
+The v6 harness separates mechanism confidence from goal relevance, validates model-supplied hypothesis roles, groups semantic duplicates, increases alternative-goal pressure after stagnation, and records every objective contribution. It uses an adaptive 16-plan catalog, confidence saturation, goal–action alignment, progress credit, one-shot policy transfer between levels, periodic full-grid refreshes with compact deltas, validated second actions, and event-triggered model review. Saved traces retain the complete evidence and diagnostics.
 
 ## Scientific boundaries
 
@@ -32,7 +30,7 @@ This is a proof of concept, not evidence of quantum advantage.
 - Quantum QAHS currently uses an exact NumPy statevector simulation, not quantum hardware.
 - The complete cost diagonal is constructed classically and grows exponentially with the encoded decision space.
 - QAOA is an approximate optimizer; exact classical search is expected to find the minimum of the current small search space reliably.
-- The LLM creates the hypotheses, actions, and estimated progress. QAHS can select only from the candidates it receives.
+- The harness generates candidate actions and two-step plans from available controls, visible objects, changed cells, boundaries, and unexplored regions. The LLM supplies structured hypotheses, predictions, progress, and risk estimates.
 - Proposal and reflection responses are cached when two conditions reach identical states with identical histories. This improves experimental consistency, but total wall time must not be interpreted as quantum speedup without separating model latency from search time.
 - Conclusions require repeated games and seeds. Failures, interrupted API calls, and action-budget exhaustion must remain in the research record.
 
@@ -56,8 +54,6 @@ Keep credentials in shell environment variables. Never place real keys in `.env.
 export OPENAI_API_KEY='your-openai-key'
 export OPENAI_MODEL='a-structured-output-capable-model'
 export ARC_API_KEY='your-arc-api-key'
-# Optional: fix sampling temperature (omit for models that reject it). Recorded in each trace.
-export OPENAI_TEMPERATURE='0'
 ```
 
 `.gitignore` excludes `.env`, the virtual environment, raw run JSON, recordings, frontend build output, and installed Node packages.
@@ -80,6 +76,7 @@ Run a live ARC-AGI-3 comparison:
   --source arc \
   --game r11l \
   --condition compare \
+  --batch batch-01 \
   --seed 0 \
   --max-steps 20
 ```
@@ -91,50 +88,31 @@ Supported conditions are:
 - `qahs_classical` — run exact classical QAHS.
 - `qahs_qaoa` — run simulated quantum QAHS.
 
-An uncached comparison can make up to `conditions × actions × 2` model calls because every action may require one proposal and one reflection. For example, three 20-action conditions can require up to 120 calls. Shared cache hits can reduce that number.
+V6 can handle predictable routine outcomes locally and invoke the model on surprises, interactions, progress, major changes, strategy resets, and periodic verification. Consequently, call counts depend on the game rather than being fixed at approximately one request per action.
 
-Raw working traces are saved under `output/arc_runs/` and are intentionally ignored by Git. They keep full error messages and tracebacks; the export step redacts these before publishing.
+Raw working traces are saved under `output/arc_runs/` and are intentionally ignored by Git.
 
-Every episode records a `stop_reason` (`success`, `game_over`, `budget_exhausted`, or `error`) so incomplete episodes can be excluded from analysis. Model requests are retried up to three times, including responses that cannot be parsed; environment actions are never retried because they may already have been applied. Comparisons rotate which condition runs first by `seed % 3` and record `condition_order`.
+New traces use a self-describing filename and store the same fields inside the JSON:
 
-### Offline games (no key, no rate limit)
-
-The downloaded games in `environment_files/` (ls20, ft09, ar25, vc33, lp85, r11l, s5i5) can be played locally with the official engine. This needs no `ARC_API_KEY`, has no rate limit, and cannot drop a connection. Use it for development:
-
-```bash
-.venv/bin/qahs-arc --source arc --arc-mode offline --game ar25 --condition compare --max-steps 10
+```text
+20261030T190000Z__v5-compact-combined__batch-01__r11l__seed-00__actions-20__gpt-6-luna__comparison.json
 ```
 
-Online mode (the default) is still required for official scorecards and shareable replays.
+The harness version distinguishes reflection-enabled experiments from older runs. Use one batch ID for runs that intentionally share a harness, model, seed, action budget, and game set. If a game is repeated within a batch, the dashboard uses its newest run.
 
-### Grid encoding and token use
+### Using Claude instead of OpenAI
 
-ARC-AGI-3 returns frames as integer grids (up to 64×64, values 0–15), so no image or OCR step is involved. `--frame-format` chooses how the grid is written for the model:
+`--provider anthropic` swaps only the model behind every harness (v7, v10, v11, v12); prompts, schemas, images, scoring, and selectors are unchanged.
 
-| Format | Content | Grid tokens on saved frames* |
-|---|---|---|
-| `runs` (default) | Color statistics + every non-background horizontal run | 938–1,782 |
-| `objects` | Connected same-color objects: color, bounding box, size, shape | 326–937 |
-| `hex` | Exact grid, one hex digit per cell | ~1,510 |
+```bash
+.venv/bin/pip install -e '.[anthropic]'
+export ANTHROPIC_API_KEY='your-anthropic-key'
+export ANTHROPIC_MODEL='claude-opus-5-5'   # default
+export ANTHROPIC_EFFORT='medium'           # default; low, medium, high, xhigh, or max
+.venv/bin/qahs-arc --source arc --provider anthropic --harness v12 --game r11l --condition compare --seed 0 --max-steps 20
+```
 
-\*Measured with the `o200k_base` tokenizer on one frame from each of five saved games.
-
-Reflection prompts now send the before-frame plus a diff of changed cells instead of two full frames. Past-turn evidence is sent as compact JSON instead of Python dumps; the current belief ledger is still sent in full. Each turn records `token_usage`, and the dashboard shows per-condition totals.
-
-### Interrupted runs and dropped connections
-
-Every run writes an append-only journal to `output/arc_sessions/<run_id>/journal.jsonl` (ignored by Git). A turn is committed only after the environment has confirmed the action and the reflection exists.
-
-- **Dropped connection:** the toolkit reports network failures as an empty response, and the action may still have been applied on the server. The run waits for connectivity with exponential backoff (`--max-wait`, default 900 s). It then rebuilds the game on a fresh session by replaying only committed actions, and checks every frame against the journal. The interrupted turn reuses its saved model response. If replay produces a different frame, the episode stops with `replay_divergence` instead of continuing in an unknown state.
-- **Process stopped** (Ctrl+C, crash, closed laptop): continue with
-
-  ```bash
-  .venv/bin/qahs-arc --resume latest      # or --resume <run_id>
-  ```
-
-  Resume reads every setting from the journal. Finished conditions are rebuilt without replaying. Saved model responses are reused, so no paid call is repeated. The final trace is written only when the run completes, and it records `resumed`, `replayed_actions`, and `connection_events`.
-- In **online** mode, replay sends real actions, so the ARC scorecard shows more actions than the agent decided. Research metrics count agent decisions only.
-- The local dashboard's run panel shows a **Resume** button when an unfinished run exists.
+Anthropic structured outputs cannot enforce `maxItems`, `minItems` above 1, or numeric and string bounds, which OpenAI strict mode enforces while decoding. The Claude caller restates those constraints in the schema descriptions, retries a response that breaks them up to twice, and then cuts over-long arrays to `maxItems`. The retry and truncation counts are recorded in the run's `model_settings`. Server-side model fallbacks are off, so every trace comes from a single model. The local dashboard still launches OpenAI runs only.
 
 ## Run the website
 
@@ -153,9 +131,10 @@ Open `http://localhost:3000`:
 
 - `/` — plain-language About page, research hypothesis, learning-loop infographic, and current architecture diagram.
 - `/results` — saved-run comparison dashboard and detailed turn traces.
-- The local Results page includes a run panel with source, offline/online mode, grid format, seed, and action budget. It is hidden when the static site is hosted publicly. Only one run can execute at a time; a second request receives HTTP 409. Interrupted runs can be resumed from the panel.
+- Results can switch between a single run and a versioned batch. Batch view supports metric and mode filters across games and warns when experimental settings do not match.
+- The local Results page includes a run panel. Choose **Single** for one game or **Batch** to enter several game IDs with one shared batch ID, seed, and action budget. Batch jobs run sequentially and report progress in the panel. The run panel is hidden when the static site is hosted publicly.
 
-New traces include the post-action reflection inside each turn's details. Older traces remain readable but do not contain this field.
+New traces include structured reflections, representation metadata, per-stage timing, and QAOA regret/rank diagnostics inside each turn. Older traces remain readable without these fields.
 
 ## Publish sanitized results
 
@@ -168,7 +147,7 @@ git commit -m "Add latest ARC-AGI-3 experiment runs"
 git push origin main
 ```
 
-The export merges new local runs into `frontend/public/runs/`; it never deletes published runs, and it does nothing when `output/arc_runs/` is empty (for example on a fresh clone). Only the sanitized files under `frontend/public/runs/` are published. API keys, raw traces, and local recordings are not sent to the frontend. A connected Vercel project rebuilds automatically after a push to `main`.
+Only the sanitized files under `frontend/public/runs/` are published. API keys, raw traces, and local recordings are not sent to the frontend. A connected Vercel project rebuilds automatically after a push to `main`.
 
 Vercel should import `frontend` as a single Next.js project. The Python experiment service remains local and is not deployed.
 
@@ -236,3 +215,9 @@ The tests cover game-ID validation, structured response parsing, persistent refl
 - `tests/` — Python correctness and integration tests.
 
 Additional operating instructions are available in `ARC_RUN_GUIDE.md` and `TESTING_CHECKLIST.md`.
+
+# V11 information-gain search
+
+ARC-AGI-3 runs now default to `v11-information-gain-search`. Luna proposes competing complete hypotheses and predicts the discrete outcome of every available physical test. Python classifies the measured outcome and updates hypothesis probabilities; exact classical search and QAOA then optimize the same ordered three-test information-gain objective, execute only the first action, and replan. Traces retain the prediction matrix, probability changes, plan, and measured outcome.
+
+V10 is frozen as `v10-success-conditioned-revision` and remains available with `qahs-arc --harness v10 ...` or the local dashboard harness selector. V11 lives in a separate module so V10 behavior and existing results are not silently changed.

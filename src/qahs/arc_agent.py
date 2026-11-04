@@ -22,7 +22,7 @@ from .arc_models import (
     proposal_from_dict,
     reflection_from_dict,
 )
-from .arc_objective import action_signature, build_arc_costs, score_arc_actions
+from .arc_objective import action_signature, build_arc_costs, grounded_goal_score, score_arc_actions
 from .arc_reasoner import ArcReasoner, CachingArcReasoner
 from .search import ClassicalSearch, QAOASearch
 from .session import (
@@ -37,6 +37,72 @@ from .session import (
 
 
 CONDITIONS = ("llm_only", "qahs_classical", "qahs_qaoa")
+MOVEMENT_ACTIONS = frozenset({"ACTION1", "ACTION2", "ACTION3", "ACTION4"})
+OVERRIDE_MARGIN = 0.30
+GROUNDED_OVERRIDE_MARGIN = 0.65
+
+
+def movement_persistence_is_safe(
+    action_type: str, cells_changed: int, levels_delta: int, terminal: bool,
+    prediction_matches: bool, strategy_reset: bool = False,
+) -> bool:
+    """Continue movement only while the observed evidence still supports it."""
+    return (
+        action_type in MOVEMENT_ACTIONS and cells_changed > 0 and levels_delta == 0
+        and not terminal and prediction_matches and not strategy_reset
+    )
+
+
+def safe_override_choice(
+    proposal, encoding, costs, valid, selector_candidate_id: str, diagnostics: dict,
+    history: list[dict], flags: dict[str, bool], commitment,
+):
+    """Keep a grounded model plan unless search finds materially stronger evidence."""
+    model_id = proposal.recommended_candidate_id
+    selector_id = selector_candidate_id
+    model_candidate = next(item for item in proposal.action_candidates if item.candidate_id == model_id)
+    selector_candidate = next(item for item in proposal.action_candidates if item.candidate_id == selector_id)
+    model_states = [encoding.encode(h.id, model_id) for h in encoding.hypotheses if valid[encoding.encode(h.id, model_id)]]
+    selector_states = [encoding.encode(h.id, selector_id) for h in encoding.hypotheses if valid[encoding.encode(h.id, selector_id)]]
+    model_index = min(model_states, key=lambda index: costs[index])
+    selector_index = min(selector_states, key=lambda index: costs[index])
+    model_hypothesis = max(
+        proposal.hypotheses,
+        key=lambda item: (item.role in {"goal", "interaction", "terminal"}, grounded_goal_score(item), item.confidence),
+    )
+    grounded = (
+        model_hypothesis.role in {"goal", "interaction", "terminal"}
+        and grounded_goal_score(model_hypothesis) >= 0.5
+        and model_candidate.expected_progress >= 0.4
+    )
+    advantage = float(costs[model_index] - costs[selector_index])
+    different_action = (selector_candidate.action_type, selector_candidate.x, selector_candidate.y) != (
+        model_candidate.action_type, model_candidate.x, model_candidate.y
+    )
+    diagnostics.update({
+        "model_recommended_candidate_id": model_id,
+        "selector_candidate_id": selector_id,
+        "selector_advantage": advantage,
+        "model_recommendation_grounded": grounded,
+        "override_opportunity": different_action,
+    })
+    if flags.get("shadow_mode"):
+        diagnostics.update({"override_permitted": False, "override_category": "shadow", "override_reason": "shadow_mode"})
+        return model_id, diagnostics, commitment
+    if selector_id == model_id or not different_action:
+        diagnostics.update({"override_permitted": False, "override_category": "none", "override_reason": "selector_agreed"})
+        return selector_id, diagnostics, commitment
+    threshold = GROUNDED_OVERRIDE_MARGIN if grounded else OVERRIDE_MARGIN
+    if any(item.get("override_permitted") for item in history[-2:]):
+        threshold += 0.20
+    permitted = not flags.get("override_safety", True) or advantage >= threshold
+    diagnostics.update({
+        "override_permitted": permitted,
+        "override_category": "evidence" if permitted else "blocked",
+        "override_reason": "evidence_margin_met" if permitted else "insufficient_evidence_margin",
+        "override_required_margin": threshold,
+    })
+    return (selector_id if permitted else model_id), diagnostics, commitment
 
 
 def frame_signature(frame: tuple[tuple[int, ...], ...]) -> str:
@@ -89,13 +155,14 @@ def _decide(reasoner: ArcReasoner, condition: str, observation, history: list[di
         }
     else:
         encoding = ArcEncoding(proposal.hypotheses, proposal.action_candidates)
-        costs, valid = build_arc_costs(encoding, proposal, scores)
+        costs, valid, cost_diagnostics = build_arc_costs(encoding, proposal, scores, history)
         backend = ClassicalSearch() if condition == "qahs_classical" else QAOASearch(
             depth=2, restarts=3, maxiter=80, shots=512, seed=seed + turn_number
         )
         result = backend.select(encoding, scores, costs, valid)
         candidate_id = str(result.action)
         diagnostics = {
+            **cost_diagnostics,
             **result.diagnostics,
             "backend": result.backend,
             "quantum_used": condition == "qahs_qaoa",
@@ -266,6 +333,11 @@ def run_arc_episode(
                 observation_after=observation,
                 reflection=reflection,
                 model_calls=decision.model_calls + reflection_calls,
+                timings={
+                    "selection_seconds": 0.0,
+                    "reasoning_seconds": 0.0,
+                    "reflection_seconds": 0.0,
+                },
                 token_usage=_add_usage(dict(decision.usage), reflection_usage),
             )
             history.append(history_entry)
@@ -394,19 +466,26 @@ def run_arc_comparison(
     extra_settings: dict[str, Any] | None = None,
     **episode_options: Any,
 ) -> ArcComparisonTrace:
+    batch_id = episode_options.pop("batch_id", None)
+    # Progress reporting belongs to the dashboard's versioned runners; the
+    # resumable core accepts it harmlessly for API compatibility.
+    episode_options.pop("progress_callback", None)
     reasoner = reasoner_factory()
     order = condition_order(seed)
     episodes = run_arc_conditions(
         order, environment_factory, shared_reasoner(reasoner, journal), source, game_id, seed, max_steps,
         journal=journal, **episode_options,
     )
-    settings = dict(getattr(getattr(reasoner, "caller", None), "settings", {}) or {})
+    caller = getattr(reasoner, "caller", None)
+    settings = dict(getattr(caller, "settings", {}) or {})
     settings.update(extra_settings or {})
     return ArcComparisonTrace(
         source, game_id, seed,
         episodes["llm_only"], episodes["qahs_classical"], episodes["qahs_qaoa"],
         action_budget=max_steps,
-        model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
+        model=(getattr(caller, "model", None) or os.environ.get("OPENAI_MODEL")) if source == "arc" else "Deterministic local reasoner",
+        reasoning_effort=(getattr(caller, "reasoning_effort", None) or os.environ.get("OPENAI_REASONING_EFFORT")) if source == "arc" else None,
+        batch_id=batch_id,
         model_settings=settings,
         condition_order=order,
     )
@@ -417,6 +496,10 @@ def save_arc_trace(trace: ArcComparisonTrace | ArcEpisodeTrace, directory: str |
     directory.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     kind = "comparison" if isinstance(trace, ArcComparisonTrace) else trace.condition
-    path = directory / f"{timestamp}_{trace.game_id}_{kind}.json"
+    safe = lambda value: "".join(char.lower() if char.isalnum() else "-" for char in str(value)).strip("-") or "unknown"
+    path = directory / (
+        f"{timestamp}__{safe(trace.harness_version)}__{safe(trace.batch_id or 'unbatched')}__{safe(trace.game_id)}"
+        f"__seed-{trace.seed:02d}__actions-{trace.action_budget}__{safe(trace.model or 'unrecorded')}__{safe(kind)}.json"
+    )
     path.write_text(json.dumps(trace.to_dict(), indent=2), encoding="utf-8")
     return path

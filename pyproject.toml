@@ -10,14 +10,16 @@ requires-python = ">=3.10"
 dependencies = ["numpy>=1.26", "scipy>=1.11"]
 
 [project.optional-dependencies]
-llm = ["openai>=1.0"]
+llm = ["openai>=1.0", "pillow>=10.0"]
+anthropic = ["anthropic>=1.0", "pillow>=10.0"]
 arc = ["arc-agi>=0.9.9"]
-full = ["openai>=1.0", "arc-agi>=0.9.9"]
+full = ["openai>=1.0", "anthropic>=1.0", "arc-agi>=0.9.9", "pillow>=10.0"]
 
 [project.scripts]
 qahs-demo = "qahs.cli:main"
 qahs-benchmark = "qahs.benchmark_cli:main"
 qahs-arc = "qahs.arc_cli:main"
+qahs-arc2 = "qahs.arc2_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

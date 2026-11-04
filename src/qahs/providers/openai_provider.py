@@ -5,52 +5,61 @@ import os
 from typing import Any
 
 
+REASONING_EFFORTS = {"none", "low", "medium", "high", "xhigh", "max"}
+
+
 class OpenAIJSONCaller:
     """Callable adapter for ``StructuredLLMInterpreter`` using the Responses API."""
 
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, reasoning_effort: str | None = None):
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise RuntimeError("Set OPENAI_API_KEY in the environment before enabling the OpenAI interpreter")
         self.model = model or os.environ.get("OPENAI_MODEL")
         if not self.model:
             raise RuntimeError("Set OPENAI_MODEL to a model available to your API project")
+        self.reasoning_effort = reasoning_effort or os.environ.get("OPENAI_REASONING_EFFORT", "medium")
+        if self.reasoning_effort not in REASONING_EFFORTS:
+            raise RuntimeError("OPENAI_REASONING_EFFORT must be none, low, medium, high, xhigh, or max")
         try:
             from openai import OpenAI
         except ImportError as error:
             raise RuntimeError("Install the optional LLM dependency with: pip install -e '.[llm]'") from error
-        self.client = OpenAI(api_key=api_key)
-        # Only sent when set: some reasoning models reject an explicit temperature.
-        temperature = os.environ.get("OPENAI_TEMPERATURE", "").strip()
-        self.temperature = float(temperature) if temperature else None
-        self.last_usage: dict[str, int] = {}
-
-    @property
-    def settings(self) -> dict[str, Any]:
-        return {"model": self.model, "temperature": self.temperature}
-
-    def _sampling(self) -> dict[str, Any]:
-        return {} if self.temperature is None else {"temperature": self.temperature}
+        timeout = float(os.environ.get("OPENAI_REQUEST_TIMEOUT", "180"))
+        retries = int(os.environ.get("OPENAI_MAX_RETRIES", "3"))
+        self.client = OpenAI(api_key=api_key, timeout=timeout, max_retries=retries)
 
     def __call__(self, prompt: str) -> str:
         response = self.client.responses.create(
             model=self.model,
+            reasoning={"effort": self.reasoning_effort},
             input=(
                 "Return only valid JSON matching the requested schema. "
                 "Do not include Markdown fences.\n\n" + prompt
             ),
-            **self._sampling(),
         )
         text = response.output_text
         if not text:
             raise RuntimeError("The model returned no text")
         return text
 
-    def call_json(self, prompt: str, schema: dict[str, Any], name: str = "structured_result") -> dict[str, Any]:
+    def call_json(
+        self,
+        prompt: str,
+        schema: dict[str, Any],
+        name: str = "structured_result",
+        images: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Return schema-constrained JSON through the Responses API."""
+        model_input: Any = prompt
+        if images:
+            content: list[dict[str, Any]] = [{"type": "input_text", "text": prompt}]
+            content.extend({"type": "input_image", "image_url": image, "detail": "high"} for image in images)
+            model_input = [{"role": "user", "content": content}]
         response = self.client.responses.create(
             model=self.model,
-            input=prompt,
+            reasoning={"effort": self.reasoning_effort},
+            input=model_input,
             text={
                 "format": {
                     "type": "json_schema",
@@ -59,13 +68,7 @@ class OpenAIJSONCaller:
                     "schema": schema,
                 }
             },
-            **self._sampling(),
         )
-        usage = getattr(response, "usage", None)
-        self.last_usage = {
-            "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
-            "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
-        }
         text = response.output_text
         if not text:
             raise RuntimeError("The model returned no structured output")

@@ -3,9 +3,20 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+HARNESS_VERSION = "v7-grounded-goals"
+INPUT_REPRESENTATION = "animation+summary+adaptive-lossless-delta-v3"
 
-# Bump when the reasoning loop changes in a way that makes runs incomparable.
-HARNESS_VERSION = "2"
+
+@dataclass(frozen=True)
+class ArcGroundedGoal:
+    target_component: str = "unspecified"
+    target_attributes: str = "unspecified"
+    current_bounds: str = "unspecified"
+    destination: str = "unspecified"
+    desired_state: str = "unspecified"
+    proposed_action: str = "unspecified"
+    prerequisites: str = "none"
+    partial_success: str = "unspecified"
 
 
 @dataclass(frozen=True)
@@ -17,6 +28,9 @@ class ArcActionCandidate:
     y: int | None = None
     expected_progress: float = 0.0
     risk: float = 0.0
+    next_action_type: str | None = None
+    next_x: int | None = None
+    next_y: int | None = None
 
 
 @dataclass(frozen=True)
@@ -25,6 +39,12 @@ class ArcHypothesis:
     statement: str
     confidence: float
     predictions: dict[str, str]
+    object_role: str = "unspecified"
+    rule: str = "unspecified"
+    goal_condition: str = "unspecified"
+    falsification: str = "unspecified"
+    role: str = "mechanism"
+    grounded_goal: ArcGroundedGoal = field(default_factory=ArcGroundedGoal)
 
 
 @dataclass(frozen=True)
@@ -43,6 +63,11 @@ class ArcBelief:
     confidence: float
     status: str
     evidence: str
+    object_role: str = "unspecified"
+    rule: str = "unspecified"
+    goal_condition: str = "unspecified"
+    falsification: str = "unspecified"
+    role: str = "mechanism"
 
 
 @dataclass(frozen=True)
@@ -62,6 +87,7 @@ class ArcObservation:
     available_actions: tuple[str, ...]
     frame: tuple[tuple[int, ...], ...]
     raw_frame_count: int = 1
+    animation_frames: tuple[tuple[tuple[int, ...], ...], ...] = field(default_factory=tuple)
     event: str = "observation"
 
     @property
@@ -85,6 +111,7 @@ class ArcTurn:
     observation_after: ArcObservation
     reflection: ArcReflection | None = None
     model_calls: int = 1
+    timings: dict[str, float] = field(default_factory=dict)
     token_usage: dict[str, int] = field(default_factory=dict)
 
 
@@ -98,9 +125,16 @@ class ArcEpisodeTrace:
     success: bool = False
     wall_seconds: float = 0.0
     error: str | None = None
+    action_budget: int = 0
+    model: str | None = None
+    reasoning_effort: str | None = None
+    harness_version: str = HARNESS_VERSION
+    batch_id: str | None = None
+    input_representation: str = INPUT_REPRESENTATION
+    harness_flags: dict[str, bool] = field(default_factory=dict)
+    intervention_summary: dict[str, int] = field(default_factory=dict)
     error_traceback: str | None = None
     stop_reason: str = ""
-    harness_version: str = HARNESS_VERSION
     resumed: bool = False
     replayed_actions: int = 0
     connection_events: list[dict[str, Any]] = field(default_factory=list)
@@ -119,9 +153,13 @@ class ArcComparisonTrace:
     with_qahs: ArcEpisodeTrace
     action_budget: int = 0
     model: str | None = None
+    reasoning_effort: str | None = None
+    harness_version: str = HARNESS_VERSION
+    batch_id: str | None = None
+    input_representation: str = INPUT_REPRESENTATION
+    harness_flags: dict[str, bool] = field(default_factory=dict)
     model_settings: dict[str, Any] = field(default_factory=dict)
     condition_order: list[str] = field(default_factory=list)
-    harness_version: str = HARNESS_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -132,17 +170,22 @@ def candidate_from_dict(data: dict[str, Any]) -> ArcActionCandidate:
 
 
 def observation_from_dict(data: dict[str, Any]) -> ArcObservation:
+    animation = tuple(tuple(tuple(row) for row in frame) for frame in data.get("animation_frames", ()))
     return ArcObservation(**{
         **data,
         "available_actions": tuple(data["available_actions"]),
         "frame": tuple(tuple(row) for row in data["frame"]),
+        "animation_frames": animation,
     })
 
 
 def proposal_from_dict(data: dict[str, Any]) -> ArcProposal:
+    hypotheses = []
+    for item in data["hypotheses"]:
+        grounded = item.get("grounded_goal", {})
+        hypotheses.append(ArcHypothesis(**{**item, "grounded_goal": ArcGroundedGoal(**grounded)}))
     return ArcProposal(
-        summary=data["summary"],
-        hypotheses=tuple(ArcHypothesis(**item) for item in data["hypotheses"]),
+        summary=data["summary"], hypotheses=tuple(hypotheses),
         action_candidates=tuple(candidate_from_dict(item) for item in data["action_candidates"]),
         recommended_candidate_id=data["recommended_candidate_id"],
         recommendation_reason=data["recommendation_reason"],
@@ -151,8 +194,7 @@ def proposal_from_dict(data: dict[str, Any]) -> ArcProposal:
 
 def reflection_from_dict(data: dict[str, Any]) -> ArcReflection:
     return ArcReflection(
-        summary=data["summary"],
-        observed_effect=data["observed_effect"],
+        summary=data["summary"], observed_effect=data["observed_effect"],
         beliefs=tuple(ArcBelief(**item) for item in data["beliefs"]),
         next_focus=data["next_focus"],
     )

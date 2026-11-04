@@ -17,6 +17,14 @@ class ArcCliTests(unittest.TestCase):
                     arc_cli.main()
                 self.assertEqual(saved[0].batch_id, "b-01")
 
+    def test_single_condition_is_refused_for_v10_to_v12_on_arc(self):
+        for harness in ("v10", "v11", "v12"):
+            with self.subTest(harness=harness):
+                argv = ["qahs-arc", "--source", "arc", "--condition", "llm_only", "--harness", harness]
+                with mock.patch.object(sys, "argv", argv), mock.patch("sys.stderr"), \
+                        self.assertRaises(SystemExit):
+                    arc_cli.main()
+
 
 if __name__ == "__main__":
     unittest.main()

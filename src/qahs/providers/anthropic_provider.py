@@ -9,6 +9,7 @@ DEFAULT_MODEL = "claude-opus-5-5"
 DEFAULT_EFFORT = "medium"
 EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 MAX_TOKENS = 16000
+MAX_LOGGED_ERRORS = 20
 # Attempts per call when the response breaks a constraint the API cannot enforce (see strip_unsupported).
 CONSTRAINT_ATTEMPTS = 3
 
@@ -102,6 +103,11 @@ class AnthropicJSONCaller:
         self.last_usage: dict[str, int] = {}
         self.constraint_retries = 0
         self.constraint_truncations = 0
+        # Run totals, saved into each trace's model_settings so cost and failures are visible
+        # even where a harness records no per-turn usage or omits error details.
+        self.request_count = 0
+        self.usage_totals: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0}
+        self.call_errors: list[str] = []
 
     @property
     def effort(self) -> str:
@@ -111,7 +117,11 @@ class AnthropicJSONCaller:
     def settings(self) -> dict[str, Any]:
         return {"provider": "anthropic", "model": self.model, "effort": self.reasoning_effort,
                 "max_tokens": MAX_TOKENS, "constraint_retries": self.constraint_retries,
-                "constraint_truncations": self.constraint_truncations}
+                "constraint_truncations": self.constraint_truncations,
+                "request_count": self.request_count,
+                # Keys avoid the word "token", which the dashboard exporter redacts as a secret.
+                "usage_totals": {key.removesuffix("_tokens"): value for key, value in self.usage_totals.items()},
+                "call_errors": list(self.call_errors[-MAX_LOGGED_ERRORS:])}
 
     def call_json(
         self,
@@ -135,6 +145,16 @@ class AnthropicJSONCaller:
         return truncate_arrays(schema, payload)
 
     def _request(self, content: Any, schema: dict[str, Any]) -> dict[str, Any]:
+        self.request_count += 1
+        try:
+            return self._request_once(content, schema)
+        except Exception as error:
+            # The error class and the API's or this module's own message; never request content.
+            status = getattr(error, "status_code", None)
+            self.call_errors.append(f"{type(error).__name__}{f' {status}' if status else ''}: {str(error)[:300]}")
+            raise
+
+    def _request_once(self, content: Any, schema: dict[str, Any]) -> dict[str, Any]:
         response = self.client.messages.create(
             model=self.model,
             max_tokens=MAX_TOKENS,
@@ -150,6 +170,8 @@ class AnthropicJSONCaller:
             "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
             "cache_read_input_tokens": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
         }
+        for key, value in self.last_usage.items():
+            self.usage_totals[key] = self.usage_totals.get(key, 0) + value
         if response.stop_reason == "refusal":
             details = getattr(response, "stop_details", None)
             raise RuntimeError(f"The model refused (category: {getattr(details, 'category', None)})")

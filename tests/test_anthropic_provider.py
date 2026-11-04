@@ -68,6 +68,19 @@ class AnthropicCallerTests(unittest.TestCase):
         self.assertEqual(caller.last_usage["input_tokens"], 120)
         self.assertEqual(caller.settings["provider"], "anthropic")
 
+    def test_usage_totals_and_call_errors_reach_settings(self):
+        caller = AnthropicJSONCaller(client=FakeClient(response(), response(), response(stop_reason="refusal", category="cyber")))
+        caller.call_json("prompt", {})
+        caller.call_json("prompt", {})
+        with self.assertRaises(RuntimeError):
+            caller.call_json("prompt", {})
+        settings = caller.settings
+        self.assertEqual(settings["request_count"], 3)
+        self.assertEqual(settings["usage_totals"]["input"], 3 * caller.last_usage["input_tokens"])
+        self.assertEqual(len(settings["call_errors"]), 1)
+        self.assertIn("refused", settings["call_errors"][0])
+        self.assertIn("cyber", settings["call_errors"][0])
+
     def test_effort_none_is_rejected(self):
         with self.assertRaises(RuntimeError):
             AnthropicJSONCaller(reasoning_effort="none", client=FakeClient())

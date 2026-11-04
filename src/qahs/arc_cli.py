@@ -48,6 +48,10 @@ def main() -> None:
     if args.provider == "openai":
         os.environ["OPENAI_MODEL"] = args.model
         os.environ["OPENAI_REASONING_EFFORT"] = args.reasoning_effort
+    if args.source == "arc" and args.condition != "compare" and args.harness in ("v10", "v11", "v12"):
+        # Single-condition runs only exist for the v7 path; running one under --harness v10-v12
+        # used to fall through to v7 silently.
+        parser.error(f"--harness {args.harness} supports --condition compare only; use --harness v7 for single conditions")
     batch_id = args.batch.strip().lower() or None
     if batch_id and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,31}", batch_id):
         parser.error("--batch must use lowercase letters, numbers, and hyphens (32 characters maximum)")

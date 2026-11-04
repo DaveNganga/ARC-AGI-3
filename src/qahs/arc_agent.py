@@ -476,14 +476,15 @@ def run_arc_comparison(
         order, environment_factory, shared_reasoner(reasoner, journal), source, game_id, seed, max_steps,
         journal=journal, **episode_options,
     )
-    settings = dict(getattr(getattr(reasoner, "caller", None), "settings", {}) or {})
+    caller = getattr(reasoner, "caller", None)
+    settings = dict(getattr(caller, "settings", {}) or {})
     settings.update(extra_settings or {})
     return ArcComparisonTrace(
         source, game_id, seed,
         episodes["llm_only"], episodes["qahs_classical"], episodes["qahs_qaoa"],
         action_budget=max_steps,
-        model=os.environ.get("OPENAI_MODEL") if source == "arc" else "Deterministic local reasoner",
-        reasoning_effort=os.environ.get("OPENAI_REASONING_EFFORT") if source == "arc" else None,
+        model=(getattr(caller, "model", None) or os.environ.get("OPENAI_MODEL")) if source == "arc" else "Deterministic local reasoner",
+        reasoning_effort=(getattr(caller, "reasoning_effort", None) or os.environ.get("OPENAI_REASONING_EFFORT")) if source == "arc" else None,
         batch_id=batch_id,
         model_settings=settings,
         condition_order=order,

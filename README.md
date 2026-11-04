@@ -100,6 +100,20 @@ New traces use a self-describing filename and store the same fields inside the J
 
 The harness version distinguishes reflection-enabled experiments from older runs. Use one batch ID for runs that intentionally share a harness, model, seed, action budget, and game set. If a game is repeated within a batch, the dashboard uses its newest run.
 
+### Using Claude instead of OpenAI
+
+`--provider anthropic` swaps only the model behind every harness (v7, v10, v11, v12); prompts, schemas, images, scoring, and selectors are unchanged.
+
+```bash
+.venv/bin/pip install -e '.[anthropic]'
+export ANTHROPIC_API_KEY='your-anthropic-key'
+export ANTHROPIC_MODEL='claude-opus-5-5'   # default
+export ANTHROPIC_EFFORT='medium'           # default; low, medium, high, xhigh, or max
+.venv/bin/qahs-arc --source arc --provider anthropic --harness v12 --game r11l --condition compare --seed 0 --max-steps 20
+```
+
+Anthropic structured outputs cannot enforce `maxItems`, `minItems` above 1, or numeric and string bounds, which OpenAI strict mode enforces while decoding. The Claude caller restates those constraints in the schema descriptions, retries a response that breaks them up to twice, and then cuts over-long arrays to `maxItems`. The retry and truncation counts are recorded in the run's `model_settings`. Server-side model fallbacks are off, so every trace comes from a single model. The local dashboard still launches OpenAI runs only.
+
 ## Run the website
 
 ```bash

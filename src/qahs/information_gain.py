@@ -30,9 +30,51 @@ HARNESS_VERSION = "v11-information-gain-search"
 INPUT_REPRESENTATION = "stable-interactive-entities+lossless-grid+validated-persistence-v4"
 OUTCOMES = ("NO_CHANGE", "LOCAL_CHANGE", "BROAD_CHANGE", "MOVE", "GROUP_TRANSFORM",
             "PROGRESS", "TERMINAL", "FAIL", "UNKNOWN")
+CONDITIONS = ("llm_only", "qahs_classical", "qahs_qaoa")
 RELATION_CHANGES = ("ANY_CHANGE", "NO_CHANGE", "MOVE_LEFT", "MOVE_RIGHT", "MOVE_UP", "MOVE_DOWN",
                     "DISTANCE_DECREASES", "DISTANCE_INCREASES", "GROUP_TRANSFORM")
 MOVES = {"ACTION1": (0, -1), "ACTION2": (0, 1), "ACTION3": (-1, 0), "ACTION4": (1, 0)}
+
+
+def comparison_condition_order(seed: int) -> list[str]:
+    """Counterbalance which condition populates the shared proposal cache first."""
+    shift = seed % len(CONDITIONS)
+    return list(CONDITIONS[shift:] + CONDITIONS[:shift])
+
+
+def comparison_state_signature(observation: Any) -> tuple[Any, ...]:
+    """Fields that must match before conditions can form a valid comparison."""
+    return (
+        observation.state,
+        observation.levels_completed,
+        observation.win_levels,
+        tuple(observation.available_actions),
+        observation.frame,
+    )
+
+
+def override_diagnostics(condition: str, selected: str, recommended: str,
+                         procedure_continued: bool) -> dict[str, bool]:
+    """Count a disagreement once, when the selector makes it."""
+    differs = selected != recommended
+    selector_decision = not procedure_continued
+    return {
+        "differs_from_model_recommendation": differs,
+        "fresh_selector_decision": selector_decision,
+        "override_opportunity": selector_decision and differs,
+        "override_permitted": condition != "llm_only" and selector_decision and differs,
+        "continued_prior_override": condition != "llm_only" and not selector_decision and differs,
+    }
+
+
+def outcome_compatible(predicted: str, observed: str) -> bool:
+    """Compare outcomes by specificity rather than brittle string equality."""
+    if predicted == "UNKNOWN" or predicted == observed:
+        return True
+    # A coordinated group transformation is a specific form of broad change.
+    # The reverse is intentionally false: predicting a group effect is more
+    # specific and must not be confirmed by an arbitrary broad change.
+    return predicted == "BROAD_CHANGE" and observed == "GROUP_TRANSFORM"
 
 
 @dataclass(frozen=True)
@@ -207,6 +249,7 @@ class InformationGainReasoner:
         self.caller = caller
         self.refresh_turns = refresh_turns
         self.cache: dict[str, HypothesisCatalog] = {}
+        self.cache_model_seconds: dict[str, float] = {}
         self.entity_cache: dict[str, tuple[EntityFact, ...]] = {}
         self.previous_entities: tuple[EntityFact, ...] = tuple()
         self.catalog: HypothesisCatalog | None = None
@@ -225,6 +268,9 @@ class InformationGainReasoner:
         self.active_last_outcome = ""
         self.active_target = ""
         self.last_call_count = 0
+        self.last_request_count = 0
+        self.last_catalog_cache_hit = False
+        self.last_logical_model_seconds = 0.0
         self.last_transfer_hypothesis_id: int | None = None
         self.architecture_prompt = ""
 
@@ -258,6 +304,14 @@ class InformationGainReasoner:
     def architecture_diagnostics(self) -> dict[str, Any]:
         return {}
 
+    @property
+    def requires_hypothesis_review(self) -> bool:
+        return False
+
+    def prepare_hypothesis_review(self) -> str:
+        """Prepare a requested model review and return its prompt context."""
+        return ""
+
     def reset_episode(self) -> None:
         self.entity_cache = {}; self.previous_entities = tuple(); self.catalog = None
         self.posterior = {}; self.evidence_count = 0; self.pending_success = None
@@ -278,6 +332,11 @@ class InformationGainReasoner:
             "MOVE_LEFT", "MOVE_RIGHT", "MOVE_UP", "MOVE_DOWN",
             "DISTANCE_DECREASES", "DISTANCE_INCREASES",
         }
+
+    @staticmethod
+    def _relation_mismatch_refutes_procedure(hypothesis: TestableHypothesis) -> bool:
+        """V11 couples physical and goal evidence; V12 overrides this hook."""
+        return True
 
     def entities_for(self, observation: Any) -> tuple[EntityFact, ...]:
         key = json.dumps(observation.frame)
@@ -342,10 +401,13 @@ class InformationGainReasoner:
         force = force or repeated_no_change
         same_actions = self.catalog and tuple(row.candidate_id for row in self.catalog.candidates) == tuple(row.candidate_id for row in candidates)
         if self.catalog and same_actions and not force and self.evidence_count < self.refresh_turns and not self.pending_success:
-            self.last_call_count = 0
+            self.last_call_count = 0; self.last_request_count = 0; self.last_catalog_cache_hit = False
+            self.last_logical_model_seconds = 0.0
             return self.catalog
         recent = [{key: row.get(key) for key in ("turn", "candidate_id", "observed_outcome",
-                                                  "physical_outcome", "levels_delta", "validated_hypothesis_id")}
+                                                  "physical_outcome", "procedure_evidence_status",
+                                                  "goal_component_status", "levels_delta",
+                                                  "validated_hypothesis_id")}
                   for row in history[-8:]]
         success_text = "None"
         images = [url for url in [frame_image_data_url(observation.frame)] if url]
@@ -357,6 +419,7 @@ class InformationGainReasoner:
                                       frame_image_data_url(observation.frame)] if url]
             # A new level may change the interface and make an old explanation viable again.
             self.retired_statements = []
+        review_context = self.prepare_hypothesis_review() if force else ""
         prompt = f"""You are proposing competing, falsifiable explanations for an unfamiliar visual game.
 {self.architecture_prompt}
 Do not choose actions by prose intuition alone. Return 6-10 genuinely distinct complete hypotheses. For EVERY
@@ -379,6 +442,7 @@ ENTITIES: {json.dumps(_entity_rows(entities), sort_keys=True)}
 CANDIDATES: {json.dumps([asdict(row) for row in candidates], sort_keys=True)}
 RECENT OBJECTIVE RESULTS: {json.dumps(recent, sort_keys=True)}
 SUCCESS TRANSITION TO AUDIT: {success_text}
+FORCED HYPOTHESIS REVIEW: {review_context or 'None'}
 REJECTED IN THIS LEVEL (do not restate without new evidence): {json.dumps(self.retired_statements[-8:])}
 
 Recommend the single action you would execute as the LLM-only baseline. Python will independently maintain
@@ -386,12 +450,21 @@ probabilities and classical/quantum QAHS will optimize an ordered three-test pla
 then replan. Return predictions for every listed candidate_id exactly once per hypothesis."""
         cache_key = json.dumps({"frame": observation.frame, "candidates": [row.candidate_id for row in candidates],
                                 "recent": recent, "success": success_text,
+                                "forced_review": review_context,
+                                "rejected_in_level": self.retired_statements[-8:],
                                 "architecture": self.architecture_prompt}, sort_keys=True)
         if cache_key in self.cache:
-            catalog = self.cache[cache_key]; self.last_call_count = 0
+            catalog = self.cache[cache_key]
+            self.last_call_count = 0; self.last_request_count = 1; self.last_catalog_cache_hit = True
+            self.last_logical_model_seconds = self.cache_model_seconds.get(cache_key, 0.0)
         else:
+            model_started = perf_counter()
             raw = self.caller.call_json(prompt, self.hypothesis_schema, "hypothesis_catalog", images)
-            catalog = self._parse(raw, candidates); self.cache[cache_key] = catalog; self.last_call_count = 1
+            model_seconds = perf_counter() - model_started
+            catalog = self._parse(raw, candidates); self.cache[cache_key] = catalog
+            self.cache_model_seconds[cache_key] = model_seconds
+            self.last_call_count = 1; self.last_request_count = 1; self.last_catalog_cache_hit = False
+            self.last_logical_model_seconds = model_seconds
         self.catalog = catalog
         total = sum(row.prior for row in catalog.hypotheses)
         self.posterior = {row.id: row.prior / total for row in catalog.hypotheses}
@@ -410,7 +483,8 @@ then replan. Return predictions for every listed candidate_id exactly once per h
             prediction = hypothesis.prediction_for(candidate_id)
             if prediction.outcome == "UNKNOWN":
                 likelihood = .35
-            elif prediction.outcome in {observed, *supporting_outcomes}:
+            elif any(outcome_compatible(prediction.outcome, outcome)
+                     for outcome in (observed, *supporting_outcomes)):
                 likelihood = .55 + .4 * prediction.confidence
             else:
                 likelihood = max(.03, .2 - .15 * prediction.confidence)
@@ -485,8 +559,8 @@ then replan. Return predictions for every listed candidate_id exactly once per h
             return False
         alternatives = [row for row in catalog.hypotheses
             if row != active and row.persistence_candidate_id == active.persistence_candidate_id and
-            (not self.active_last_outcome or row.prediction_for(active.persistence_candidate_id).outcome
-             in {self.active_last_outcome, "UNKNOWN"})]
+            (not self.active_last_outcome or outcome_compatible(
+                row.prediction_for(active.persistence_candidate_id).outcome, self.active_last_outcome))]
         if not alternatives:
             return False
         replacement = max(alternatives, key=lambda row: posterior.get(row.id, 0.0))
@@ -495,7 +569,8 @@ then replan. Return predictions for every listed candidate_id exactly once per h
             return False
         self.active_hypothesis = replacement; self.active_hypothesis_id = replacement.id
         self.active_confidence = replacement_confidence; self.active_target = replacement.sequence_target_state
-        if self.active_last_outcome in replacement.confirmation_outcomes:
+        if any(outcome_compatible(expected, self.active_last_outcome)
+               for expected in replacement.confirmation_outcomes):
             self.active_sequence = [replacement.persistence_candidate_id]
         else:
             remaining = list(replacement.test_sequence)
@@ -514,8 +589,8 @@ then replan. Return predictions for every listed candidate_id exactly once per h
         self.active_last_candidate = candidate_id; self.active_last_outcome = observed
         evidence = {observed, physical_outcome}
         prediction = hypothesis.prediction_for(candidate_id)
-        predicted = prediction.outcome == "UNKNOWN" or prediction.outcome in evidence
-        explicitly_predicted = prediction.outcome != "UNKNOWN" and prediction.outcome in evidence
+        predicted = any(outcome_compatible(prediction.outcome, outcome) for outcome in evidence)
+        explicitly_predicted = prediction.outcome != "UNKNOWN" and predicted
         relation_holds = self._relation_holds(hypothesis, before, after, physical_outcome)
         if observed in {"PROGRESS", "TERMINAL"} and explicitly_predicted and relation_holds:
             validation = {"hypothesis_id": hypothesis.id, "statement": hypothesis.statement,
@@ -531,8 +606,10 @@ then replan. Return predictions for every listed candidate_id exactly once per h
         # Explicit game-level failure evidence must not be masked by a matching
         # physical effect. An action can transform the board exactly as predicted
         # and still disprove the procedure by causing FAIL.
-        contradicted = bool(evidence.intersection(hypothesis.refutation_outcomes))
-        if contradicted or not predicted or not relation_holds:
+        contradicted = any(outcome_compatible(expected, outcome)
+                           for expected in hypothesis.refutation_outcomes for outcome in evidence)
+        relation_contradicted = not relation_holds and self._relation_mismatch_refutes_procedure(hypothesis)
+        if contradicted or not predicted or relation_contradicted:
             # A direct contradiction retires this explanation for the current
             # catalog. It cannot be resurrected by a later transfer unless Luna
             # supplies a genuinely revised catalog after new evidence.
@@ -541,8 +618,10 @@ then replan. Return predictions for every listed candidate_id exactly once per h
             alternatives = [row for row in (self.catalog.hypotheses if self.catalog else tuple())
                 if row.id not in self.refuted_hypothesis_ids and
                 row.prediction_for(candidate_id).outcome != "UNKNOWN" and
-                row.prediction_for(candidate_id).outcome in evidence and
-                not evidence.intersection(row.refutation_outcomes) and
+                any(outcome_compatible(row.prediction_for(candidate_id).outcome, outcome)
+                    for outcome in evidence) and
+                not any(outcome_compatible(expected, outcome)
+                    for expected in row.refutation_outcomes for outcome in evidence) and
                 self._relation_holds(row, before, after, physical_outcome)]
             if alternatives:
                 replacement = max(alternatives, key=lambda row: self.posterior.get(row.id, 0.0))
@@ -564,7 +643,8 @@ then replan. Return predictions for every listed candidate_id exactly once per h
                 return "reframed_supported", None
             self.evidence_count = max(self.evidence_count, self.refresh_turns)
             self._clear_sequence(); return "refuted", None
-        confirmed = bool(evidence.intersection(hypothesis.confirmation_outcomes))
+        confirmed = any(outcome_compatible(expected, outcome)
+                        for expected in hypothesis.confirmation_outcomes for outcome in evidence)
         if observed == "TERMINAL":
             self._clear_sequence(); return "confirmed", None
         self.active_confidence = self.posterior.get(hypothesis.id, self.active_confidence)
@@ -766,7 +846,9 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
             stage = perf_counter()
             before_entities = reasoner.entities_for(observation)
             current_candidates = action_catalog(observation, before_entities)
-            queued_candidate = reasoner.queued_action(current_candidates) if reasoner.catalog else None
+            forced_review = reasoner.requires_hypothesis_review
+            queued_candidate = (reasoner.queued_action(current_candidates)
+                                if reasoner.catalog and not forced_review else None)
             # A procedure is already an evidence-bound decision. Rebuilding the
             # hypothesis catalog and every three-action plan cannot change this
             # turn's action, so execute it directly. assess_sequence below will
@@ -796,6 +878,9 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                     "active_hypothesis_id": reasoner.active_hypothesis_id,
                     "procedure_target_state": reasoner.active_target, "procedure_continued": True,
                     "procedure_reframed": False, "reasoning_reused": True}
+                diagnostics.update({"model_requests": 0, "api_model_calls": 0,
+                                    "catalog_cache_hit": False, "forced_hypothesis_review": False})
+                logical_model_seconds = 0.0
                 selection_seconds = 0.0
                 selected = next(row for row in current_candidates if row.candidate_id == candidate_id)
                 proposal_candidates = current_candidates
@@ -803,8 +888,12 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                 plan_count = math.perm(len(current_candidates), depth) if depth else 1
                 decision_qubits = max(1, math.ceil(math.log2(max(2, plan_count))))
             else:
-                stage = perf_counter(); catalog = reasoner.propose(observation, history)
-                proposal_seconds = perf_counter() - stage; model_calls = reasoner.last_call_count
+                if forced_review:
+                    reasoner._clear_sequence()
+                stage = perf_counter(); catalog = reasoner.propose(observation, history, force=forced_review)
+                proposal_seconds = perf_counter() - stage
+                model_calls = max(reasoner.last_request_count, reasoner.last_call_count)
+                logical_model_seconds = reasoner.last_logical_model_seconds
                 before_entities = reasoner.entities_for(observation)
                 posterior_before = dict(reasoner.posterior)
                 procedure_reframed = reasoner.reconsider_sequence(catalog, posterior_before)
@@ -856,6 +945,10 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                 selected = next(row for row in catalog.candidates if row.candidate_id == candidate_id)
                 proposal_candidates = catalog.candidates
                 decision_qubits = encoding.total_bits
+                diagnostics.update({"model_requests": model_calls,
+                                    "api_model_calls": reasoner.last_call_count,
+                                    "catalog_cache_hit": reasoner.last_catalog_cache_hit,
+                                    "forced_hypothesis_review": forced_review})
             proposal = ArcProposal(catalog.summary, _arc_hypotheses(catalog, posterior_before), proposal_candidates,
                                    catalog.recommended_candidate_id, catalog.recommendation_reason)
             diagnostics.update({**objective, "selected_plan": selected_plan,
@@ -864,8 +957,10 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                 "entity_catalog": _entity_rows(before_entities),
                 "model_recommended_candidate_id": catalog.recommended_candidate_id,
                 "selector_candidate_id": candidate_id,
-                "override_opportunity": candidate_id != catalog.recommended_candidate_id,
-                "override_permitted": condition != "llm_only" and candidate_id != catalog.recommended_candidate_id,
+                # A persisted procedure is the execution of an earlier decision,
+                # not a new opportunity or a second QAHS override.
+                **override_diagnostics(condition, candidate_id, catalog.recommended_candidate_id,
+                                       bool(diagnostics.get("procedure_continued"))),
                 "decision_qubits": decision_qubits})
             diagnostics.update(reasoner.architecture_diagnostics())
             emit({"phase": "environment", "condition": condition, "condition_index": condition_index,
@@ -875,10 +970,14 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
             observed, transition = classify_outcome(before, observation, before_entities, after_entities, history)
             physical_outcome = str(transition["physical_outcome"])
             procedure_hypothesis = reasoner.active_hypothesis
-            beliefs_before, beliefs_after = reasoner.update(candidate_id, observed, (physical_outcome,))
+            beliefs_before, _physical_update = reasoner.update(candidate_id, observed, (physical_outcome,))
             procedure_status, validation = reasoner.assess_sequence(
                 candidate_id, observed, physical_outcome, before_entities, after_entities,
                 int(observation.levels_completed))
+            # V12 adds goal, topology, and sequence evidence during
+            # assess_sequence. Save the final ledger used by the next decision,
+            # not the intermediate physical-effect-only posterior.
+            beliefs_after = dict(reasoner.posterior)
             diagnostics.update({"observed_outcome": observed,
                 "physical_outcome": physical_outcome,
                 "procedure_evidence_status": procedure_status,
@@ -890,13 +989,34 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                 "after_entity_catalog": _entity_rows(after_entities), "changed_cells": transition["changed_cells"],
                 "levels_delta": transition["levels_delta"],
                 "moved_entity_ids": transition.get("moved_entity_ids", [])})
+            # Newer harnesses may expose richer deterministic evidence while
+            # preserving this shared V11 execution loop.
+            if hasattr(reasoner, "last_effect_signature"):
+                diagnostics["relational_effect_signature"] = reasoner.last_effect_signature
+            if hasattr(reasoner, "last_goal_evidence"):
+                diagnostics["observable_goal_evidence"] = reasoner.last_goal_evidence
+            if hasattr(reasoner, "last_goal_component_status"):
+                diagnostics["goal_component_status"] = reasoner.last_goal_component_status
             best = max(catalog.hypotheses, key=lambda row: beliefs_after.get(row.id, 0))
             active = max(catalog.hypotheses, key=lambda row: beliefs_before.get(row.id, 0))
             predicted = active.prediction_for(candidate_id).outcome
+            def reflection_status(row: TestableHypothesis) -> str:
+                if any(outcome_compatible(expected, outcome)
+                       for expected in row.refutation_outcomes for outcome in (observed, physical_outcome)):
+                    return "refuted"
+                mechanism_supported = any(outcome_compatible(
+                    row.prediction_for(candidate_id).outcome, outcome)
+                    for outcome in (observed, physical_outcome))
+                if procedure_hypothesis and row.id == procedure_hypothesis.id and mechanism_supported:
+                    goal_status = getattr(reasoner, "last_goal_component_status", "unchanged")
+                    if goal_status == "weakened":
+                        return "mechanism_supported_goal_weakened"
+                    if goal_status == "improved":
+                        return "goal_improved"
+                return "supported" if mechanism_supported else "weakened"
             reflection = ArcReflection(f"Observed {observed}; updated competing explanations objectively.", observed,
                 tuple(ArcBelief(row.id, row.statement, beliefs_after.get(row.id, 0),
-                    "refuted" if {observed, physical_outcome}.intersection(row.refutation_outcomes) else
-                    "supported" if row.prediction_for(candidate_id).outcome in {observed, physical_outcome} else "weakened",
+                    reflection_status(row),
                     f"Predicted {row.prediction_for(candidate_id).outcome}; physical effect {physical_outcome}; game effect {observed}.", role="testable_world_model")
                     for row in catalog.hypotheses), f"Test an action that best separates the remaining explanations; current leader: {best.id}.")
             if int(transition["levels_delta"]) > 0 or observation.success:
@@ -910,12 +1030,15 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
                 reasoner.evidence_count = reasoner.refresh_turns
             history.append({"turn": turn_number, "candidate_id": candidate_id, "observed_outcome": observed,
                             "physical_outcome": physical_outcome,
+                            "procedure_evidence_status": procedure_status,
+                            "goal_component_status": getattr(reasoner, "last_goal_component_status", "unchanged"),
                             "predicted_outcome": predicted, "levels_delta": transition["levels_delta"],
                             "validated_hypothesis_id": validation.get("hypothesis_id") if validation else None,
                             "selected_plan": selected_plan, "state": observation.state})
             trace.turns.append(ArcTurn(turn_number, before, proposal, condition, selected,
                 [asdict(row) for row in scores], diagnostics, observation, reflection, model_calls,
                 {"proposal_seconds": proposal_seconds, "objective_seconds": objective_seconds,
+                 "logical_model_seconds": logical_model_seconds,
                  "selection_seconds": selection_seconds, "environment_seconds": environment_seconds,
                  "reflection_seconds": 0.0, "turn_seconds": perf_counter() - turn_started}))
             emit({"phase": "turn_completed", "condition": condition, "condition_index": condition_index,
@@ -927,9 +1050,26 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
     except Exception as error:
         trace.error = f"{type(error).__name__}: run failed; internal details omitted"
     trace.wall_seconds = perf_counter() - started
-    trace.intervention_summary = {"opportunities": sum(bool(t.search_diagnostics.get("override_opportunity")) for t in trace.turns),
-        "permitted": sum(bool(t.search_diagnostics.get("override_permitted")) for t in trace.turns),
-        "blocked": 0, "helpful": 0, "neutral": 0, "harmful": 0}
+    trace.comparable_seconds = sum(
+        turn.timings.get("logical_model_seconds", turn.timings.get("proposal_seconds", 0.0)) +
+        turn.timings.get("objective_seconds", 0.0) +
+        turn.timings.get("selection_seconds", 0.0) +
+        turn.timings.get("environment_seconds", 0.0) +
+        turn.timings.get("reflection_seconds", 0.0)
+        for turn in trace.turns
+    )
+    permitted = [turn for turn in trace.turns if turn.search_diagnostics.get("override_permitted")]
+    trace.intervention_summary = {
+        "opportunities": sum(bool(t.search_diagnostics.get("override_opportunity")) for t in trace.turns),
+        "permitted": len(permitted),
+        "continued": sum(bool(t.search_diagnostics.get("continued_prior_override")) for t in trace.turns),
+        # These are observed outcomes of selected overrides, not unobserved
+        # counterfactual claims that the override was helpful or harmful.
+        "progress_outcomes": sum(int(t.search_diagnostics.get("levels_delta", 0)) > 0 for t in permitted),
+        "terminal_outcomes": sum(t.search_diagnostics.get("observed_outcome") == "TERMINAL" for t in permitted),
+        "failure_outcomes": sum(t.search_diagnostics.get("observed_outcome") == "FAIL" for t in permitted),
+        "no_change_outcomes": sum(t.search_diagnostics.get("observed_outcome") == "NO_CHANGE" for t in permitted),
+    }
     emit({"phase": "condition_completed", "condition": condition, "condition_index": condition_index,
           "condition_total": 3, "turn": len(trace.turns), "max_steps": max_steps,
           "success": trace.success, "error": bool(trace.error)})
@@ -939,12 +1079,38 @@ def run_information_gain_episode(environment: ArcEnvironment, reasoner: Informat
 def run_information_gain_comparison(environment_factory: Callable[[], ArcEnvironment], reasoner: InformationGainReasoner,
                                     source: str, game_id: str, seed: int, max_steps: int,
                                     batch_id: str | None, progress_callback=None) -> ArcComparisonTrace:
-    episodes = [run_information_gain_episode(environment_factory(), reasoner, condition, source, seed, max_steps,
-                                               batch_id, progress_callback, index)
-                for index, condition in enumerate(("llm_only", "qahs_classical", "qahs_qaoa"))]
-    trace = ArcComparisonTrace(source, game_id, seed, *episodes, action_budget=max_steps,
+    order = comparison_condition_order(seed)
+    episodes = {condition: run_information_gain_episode(
+        environment_factory(), reasoner, condition, source, seed, max_steps,
+        batch_id, progress_callback, index)
+        for index, condition in enumerate(order)}
+    episodes_with_turns = [episode for episode in episodes.values() if episode.turns]
+    initial_states_match = len(episodes_with_turns) == len(CONDITIONS) and all(
+        comparison_state_signature(episode.turns[0].observation_before) ==
+        comparison_state_signature(episodes_with_turns[0].turns[0].observation_before)
+        for episode in episodes_with_turns[1:]
+    )
+    if len(episodes_with_turns) == len(CONDITIONS) and not initial_states_match:
+        raise RuntimeError("Matched comparison conditions did not start from the same ARC state")
+    comparison_valid = initial_states_match and all(not episode.error for episode in episodes.values())
+    trace = ArcComparisonTrace(source, game_id, seed,
+        episodes["llm_only"], episodes["qahs_classical"], episodes["qahs_qaoa"], action_budget=max_steps,
         model=reasoner.caller.model if source == "arc" else "Deterministic local reasoner",
         reasoning_effort=getattr(reasoner.caller, "reasoning_effort", None), batch_id=batch_id,
         harness_version=reasoner.harness_version, input_representation=reasoner.input_representation,
-        harness_flags=reasoner.harness_flags)
+        harness_flags=reasoner.harness_flags, condition_order=order,
+        model_settings={
+            "comparison_integrity": {
+                "comparison_valid": comparison_valid,
+                "initial_states_match": initial_states_match,
+                "condition_order_counterbalanced": True,
+                "shared_catalog_cache": True,
+                "structured_catalog_sidecars_restored": True,
+                "logical_model_requests_recorded": True,
+                "api_calls_recorded_separately": True,
+                "comparable_time_cache_normalized": True,
+                "arc_environment_seeded": True,
+                "model_output_seeded": False,
+            }
+        })
     return trace

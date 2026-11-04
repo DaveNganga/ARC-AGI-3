@@ -38,7 +38,7 @@ def main() -> None:
     parser.add_argument("--model", default=None, help="Defaults to OPENAI_MODEL/gpt-6-luna or ANTHROPIC_MODEL/claude-opus-5-5")
     parser.add_argument("--reasoning-effort", choices=("none", "low", "medium", "high", "xhigh", "max"), default=None)
     parser.add_argument("--output-dir", default="output/arc_runs")
-    parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v11"))
+    parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v12"))
     args = parser.parse_args()
     model_env, default_model = DEFAULT_MODELS[args.provider]
     args.model = args.model or os.environ.get(model_env, default_model)

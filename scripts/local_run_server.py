@@ -142,7 +142,7 @@ def validate(payload: dict) -> tuple[str, str, int, int, str | None, str, str]:
 
 def run_experiment(payload: dict, progress_callback=None) -> dict:
     source, game, seed, steps, batch, model, reasoning_effort = validate(payload)
-    harness = str(payload.get("harness") or "v11").strip().lower()
+    harness = str(payload.get("harness") or "v12").strip().lower()
     if harness not in {"v7", "v10", "v11", "v12"}:
         raise PublicError("Choose a valid harness version.")
     before = set((ROOT / "output" / "arc_runs").glob("*.json"))

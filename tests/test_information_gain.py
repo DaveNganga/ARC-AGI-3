@@ -5,6 +5,8 @@ from qahs.arc_models import ArcActionCandidate
 from qahs.information_gain import (
     HypothesisCatalog, InformationGainReasoner, PlanEncoding, Prediction,
     TestableHypothesis, build_plan_costs, expected_information_gain,
+    comparison_condition_order, comparison_state_signature, outcome_compatible,
+    override_diagnostics,
     _interactive_entities, _tracked_entities, action_catalog,
     run_information_gain_episode,
 )
@@ -24,6 +26,33 @@ class InformationGainTests(unittest.TestCase):
             hypothesis(1, .5, {"a": "MOVE", "b": "NO_CHANGE", "c": "LOCAL_CHANGE"}),
             hypothesis(2, .5, {"a": "NO_CHANGE", "b": "NO_CHANGE", "c": "LOCAL_CHANGE"}),
         ), self.candidates, "a", "diagnostic")
+
+    def test_group_transform_satisfies_broad_change_but_not_reverse(self):
+        self.assertTrue(outcome_compatible("BROAD_CHANGE", "GROUP_TRANSFORM"))
+        self.assertFalse(outcome_compatible("GROUP_TRANSFORM", "BROAD_CHANGE"))
+
+    def test_condition_order_is_counterbalanced_by_seed(self):
+        orders = [comparison_condition_order(seed) for seed in range(3)]
+        self.assertEqual({order[0] for order in orders}, {
+            "llm_only", "qahs_classical", "qahs_qaoa"
+        })
+        self.assertTrue(all(sorted(order) == sorted(orders[0]) for order in orders))
+
+    def test_comparison_signature_catches_nonvisual_start_state_differences(self):
+        frame = ((0, 1), (1, 0))
+        first = ArcObservation("test", "NOT_FINISHED", 0, 2, ("ACTION1",), frame)
+        different_actions = ArcObservation("test", "NOT_FINISHED", 0, 2, ("ACTION2",), frame)
+        different_level = ArcObservation("test", "NOT_FINISHED", 1, 2, ("ACTION1",), frame)
+        self.assertNotEqual(comparison_state_signature(first), comparison_state_signature(different_actions))
+        self.assertNotEqual(comparison_state_signature(first), comparison_state_signature(different_level))
+
+    def test_persisted_override_is_not_counted_as_a_new_override(self):
+        initial = override_diagnostics("qahs_qaoa", "click-e4", "click-e5", False)
+        continued = override_diagnostics("qahs_qaoa", "click-e4", "click-e5", True)
+        self.assertTrue(initial["override_permitted"])
+        self.assertFalse(initial["continued_prior_override"])
+        self.assertFalse(continued["override_permitted"])
+        self.assertTrue(continued["continued_prior_override"])
 
     def test_information_gain_rewards_disagreement(self):
         posterior = {1: .5, 2: .5}

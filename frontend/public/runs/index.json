@@ -1,18 +1,5 @@
 [
   {
-    "filename": "20261104T041024Z__v10-success-conditioned-revision__claude-mirror-v10-batch__vc33__seed-00__actions-80__claude-opus-5-5__comparison.json",
-    "label": "vc33 \u00b7 seed 0 \u00b7 claude-mirror-v10-batch \u00b7 v10-success-conditioned-revision",
-    "benchmark": "arc_agi_3",
-    "game_id": "vc33",
-    "seed": 0,
-    "action_budget": 80,
-    "model": "claude-opus-5-5",
-    "reasoning_effort": "medium",
-    "harness_version": "v10-success-conditioned-revision",
-    "input_representation": "tracked-objects+canonical-atoms+success-transition-audit-v4",
-    "batch_id": "claude-mirror-v10-batch"
-  },
-  {
     "filename": "20261104T040514Z__v10-success-conditioned-revision__claude-mirror-v10-batch__ar25__seed-00__actions-80__claude-opus-5-5__comparison.json",
     "label": "ar25 \u00b7 seed 0 \u00b7 claude-mirror-v10-batch \u00b7 v10-success-conditioned-revision",
     "benchmark": "arc_agi_3",

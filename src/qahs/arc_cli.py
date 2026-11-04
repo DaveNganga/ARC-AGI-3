@@ -83,14 +83,16 @@ def main() -> None:
         }
     elif args.condition == "compare":
         progress = lambda event: print("QAHS_PROGRESS " + json.dumps(event), flush=True)
-        trace = run_arc_comparison(environment_factory, reasoner_factory, args.source, game_id, args.seed, args.max_steps, batch_id, progress)
+        trace = run_arc_comparison(environment_factory, reasoner_factory, args.source, game_id, args.seed, args.max_steps,
+                                   batch_id=batch_id, progress_callback=progress)
         summary = {
             "without_qahs": {"success": trace.without_qahs.success, "actions": len(trace.without_qahs.turns), "error": trace.without_qahs.error},
             "with_classical": {"success": trace.with_classical.success, "actions": len(trace.with_classical.turns), "error": trace.with_classical.error},
             "with_qahs": {"success": trace.with_qahs.success, "actions": len(trace.with_qahs.turns), "error": trace.with_qahs.error},
         }
     else:
-        trace = run_arc_episode(environment_factory(), reasoner_factory(), args.condition, args.source, args.seed, args.max_steps, batch_id)
+        trace = run_arc_episode(environment_factory(), reasoner_factory(), args.condition, args.source, args.seed, args.max_steps)
+        trace.batch_id = batch_id
         summary = {"success": trace.success, "actions": len(trace.turns), "error": trace.error}
 
     path = save_arc_trace(trace, args.output_dir)

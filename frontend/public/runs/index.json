@@ -1,5 +1,18 @@
 [
   {
+    "filename": "20261104T213847Z__v12-structured-world-models__claude-haiku-v12-final-lp85__lp85__seed-08__actions-40__claude-haiku-5-5__comparison.json",
+    "label": "lp85 \u00b7 seed 8 \u00b7 claude-haiku-v12-final-lp85 \u00b7 v12-structured-world-models",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 8,
+    "action_budget": 40,
+    "model": "claude-haiku-5-5",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "claude-haiku-v12-final-lp85"
+  },
+  {
     "filename": "20261104T200016Z__v12-structured-world-models__claude-haiku-v12-final-lp85__lp85__seed-07__actions-40__claude-haiku-5-5__comparison.json",
     "label": "lp85 \u00b7 seed 7 \u00b7 claude-haiku-v12-final-lp85 \u00b7 v12-structured-world-models",
     "benchmark": "arc_agi_3",

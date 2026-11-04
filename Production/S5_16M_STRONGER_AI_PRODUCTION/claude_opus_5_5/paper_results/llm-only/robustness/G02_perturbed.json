@@ -1,0 +1,2102 @@
+{
+  "episode": {
+    "seed": 16062128,
+    "initial_world_ids": [
+      "P8",
+      "G2",
+      "M4",
+      "T13",
+      "I3",
+      "S5"
+    ],
+    "final_world_ids": [
+      "P8",
+      "G2",
+      "M4",
+      "T13",
+      "I3",
+      "S5"
+    ],
+    "scale": "S5",
+    "max_steps": 12,
+    "hypothesis_space_size": 16777216,
+    "hypothesis_bits": 24,
+    "perturbation_rate": 0.2
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 0,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "UP",
+        "rationale": "No evidence has been collected yet. Moving UP tests which object is controlled: O at (4,7) would collide with X1 at (3,7), which would reveal interaction, push, or swap behavior. If instead ? or X moves, that identifies the controlled class and the movement step size. This makes UP highly informative.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2"
+          ],
+          "G": [
+            "G0",
+            "G1"
+          ],
+          "M": [
+            "M0",
+            "M3"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I0",
+            "I2"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.3,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "UP",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              7
+            ],
+            "to": [
+              3,
+              7
+            ]
+          }
+        ],
+        "changed": [
+          {
+            "object": "X1",
+            "active": {
+              "before": false,
+              "after": true
+            }
+          }
+        ],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 2,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "UP moved O1 by one cell onto X1, which activated X1. This supports O being controllable with one-cell movement, and X acting as something like a switch/target activated on contact. LEFT is untested. It tests whether movement is one cell in every direction or slides, and whether O pushes or pulls X1 or leaves it behind. It also starts heading O toward the gap at (4,4)/(7,4), which leads to X2 and ? on the left side.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P5"
+          ],
+          "G": [
+            "G12",
+            "G1"
+          ],
+          "M": [
+            "M0",
+            "M3"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S4"
+          ]
+        },
+        "confidence": 0.35,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              3,
+              7
+            ],
+            "to": [
+              3,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 3,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "DOWN",
+        "rationale": "O1 is the controlled object and has moved one cell per action (UP, LEFT), consistent with M0. X1 at (3,7) became active when O1 moved onto it, which points to activate-on-contact (I3) or switch-like behavior. DOWN is untested. Moving O1 from (3,6) to (4,6) checks whether DOWN follows the standard direction (ruling out reversal or rotation in M8/M9) and opens the row-4 gap path toward the left region where ? and X2 sit. RIGHT would just return O1 to X1, which is less informative.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G12",
+            "G1"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S4"
+          ]
+        },
+        "confidence": 0.45,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "DOWN",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 3,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              3,
+              6
+            ],
+            "to": [
+              4,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 4,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 3,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "RIGHT is the only untested action. It checks for reversal or rotation mappings (M8/M9) and confirms one-cell movement (M0) for O1, which so far has moved exactly one cell per action. Moving O1 from (4,6) to (4,7) returns it next to the active X1 at (3,7). That will show whether contact or proximity re-triggers anything, such as a toggle (S11) or an activation that needs contact (I3), without leaving the known area.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P5"
+          ],
+          "M": [
+            "M0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S12"
+          ]
+        },
+        "confidence": 0.55,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 4,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              6
+            ],
+            "to": [
+              4,
+              7
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 5,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 4,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "O1 is consistently controlled with one-cell moves, and touching X1 activated it. Each action has been tested once, so repeating one is only useful in a new context. Moving LEFT along row 4 heads toward the barrier gap at (4,4) and the unexplored objects ? and X2. This will test passage through the gap, whether X1's activation matters (for example a switch or prerequisite), and the roles of ? and X2, while making progress toward a likely goal.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G0",
+            "G15"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S4",
+            "S14"
+          ]
+        },
+        "confidence": 0.5,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 5,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              7
+            ],
+            "to": [
+              4,
+              6
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 6,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 5,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "O1 is reliably controlled with one-cell moves in all four directions, and touching X1 at (3,7) activated it. The remaining unknowns are on the far side of the barrier: X2 at (7,2) and the ? object at (3,2). O1 sits in row 4, which lines up with the barrier opening at (4,4). Moving LEFT heads toward that gap, so the next moves will test whether the gap is actually passable or conditional. This also lets O1 reach X2, to see whether activating every X is the goal, and the ? object, to see what it does on contact.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G12"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.55,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 5,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 6,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              6
+            ],
+            "to": [
+              4,
+              5
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 7,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 5,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 6,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "O1 is the controlled object and has moved one cell per action in all four directions, consistent with M0. Stepping onto X1 at (3,7) activated it, but nothing was solved, which hints at an activate-on-contact interaction (I3) or a switch-before-goal sequence (S4). O1 now sits at (4,5), directly beside the barrier gap at (4,4). Moving LEFT tests whether that gap is passable (T0 versus a conditional or state-dependent passage). It also gets O1 across the wall toward X2 at (7,2) and the '?' object at (3,2), whose roles are still unknown and could be the goal.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P5"
+          ],
+          "G": [
+            "G12",
+            "G13",
+            "G3"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0",
+            "T13"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S4",
+            "S12"
+          ]
+        },
+        "confidence": 0.55,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 4,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 7,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              5
+            ],
+            "to": [
+              4,
+              4
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 8,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 4,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 7,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "O1 is the controlled object and moves one cell per action (P0, M0). Walking onto x at (3,7) activated X1, which looks like activate-on-contact (I3) and possibly a switch. O1 now sits in the gap at (4,4). Moving LEFT to (4,3) tests two things at once: whether the barrier gap can be crossed (T0 versus a conditional or one-way passage), and whether activating X1 was needed to pass (S4/T2). After that, O1 can head toward ? at (3,2) or X at (7,2) to test the goal and interaction hypotheses.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G12",
+            "G3"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0",
+            "T13"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S4",
+            "S14"
+          ]
+        },
+        "confidence": 0.55,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 3,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 8,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              4
+            ],
+            "to": [
+              4,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 9,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 4,
+            "c": 3,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 8,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "UP",
+        "rationale": "O1 moves one cell per action (M0) and passes through the barrier gap at (4,4) (T0). In E1, O1 entered the X1 cell and X1 changed to active, which suggests activate-on-contact (I3). Two objects are still untested: the unknown '?' at (3,2) and the inactive X2 at (7,2). UP moves O1 to (3,3), next to '?', so a LEFT next step can touch it and reveal its role (goal, hazard, collectible or switch). After that, visiting X2 will test whether activating all switches (G12) solves the task.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G12"
+          ],
+          "M": [
+            "M0"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.5,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "UP",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 9,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              4,
+              3
+            ],
+            "to": [
+              3,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 10,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 9,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "O1 is the controlled object and has moved one cell per action in every observation so far (M0). In E1, O1 moved onto X1's cell and X1 became active, which fits activate-on-contact (I3). O1 now sits directly next to the unknown '?' object at (3,2). Moving LEFT will show what contact with '?' does. Possible outcomes include being blocked, pushing it, collecting it, a transform, a hazard, or a teleport. This is the most informative test available, and it also sets up a later move toward X2 at (7,2), which may be a switch that still needs activating.",
+        "leading_rules": {
+          "P": [
+            "P0"
+          ],
+          "G": [
+            "G12",
+            "G6"
+          ],
+          "M": [
+            "M0",
+            "M3"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I3",
+            "I2"
+          ],
+          "S": [
+            "S4",
+            "S0"
+          ]
+        },
+        "confidence": 0.4,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": true,
+            "symbol": "?"
+          },
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "O"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": true,
+            "symbol": "X"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "X"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 10,
+        "solved_env": true,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction.",
+        "observation_quality": {
+          "kind": "fixed_missing_symbol_or_barrier",
+          "perturbation_rate": 0.2,
+          "masked_symbol_count": 1,
+          "hidden_barrier_count": 1
+        }
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "O1",
+            "from": [
+              3,
+              3
+            ],
+            "to": [
+              3,
+              2
+            ]
+          }
+        ],
+        "changed": [
+          {
+            "object": "?1",
+            "active": {
+              "before": false,
+              "after": true
+            }
+          }
+        ],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": true,
+        "failed_changed": false
+      },
+      "reward": 1,
+      "solved_env": true,
+      "failed_env": false,
+      "termination_reason": "solved"
+    }
+  ],
+  "summary": {
+    "solved": true,
+    "actions": 10,
+    "false_solution_events": 0,
+    "wall_seconds": 52.62831950187683,
+    "termination_reason": "solved",
+    "llm_calls": 10,
+    "input_tokens": 41230,
+    "output_tokens": 3412,
+    "total_tokens": 44642,
+    "model": "claude-opus-5-5",
+    "mode": "anthropic",
+    "model_wall_seconds": 52.48443245887756
+  },
+  "change_turn": null,
+  "recovery_latency": null,
+  "agent_summary": {
+    "condition": "llm-only"
+  },
+  "measurements": {
+    "actions": 10,
+    "unique_actions": 4,
+    "action_counts": {
+      "UP": 2,
+      "DOWN": 1,
+      "LEFT": 6,
+      "RIGHT": 1
+    },
+    "action_diversity_fraction": 1.0,
+    "action_entropy_bits": 1.5709505944546687,
+    "normalized_action_entropy": 0.7854752972273343,
+    "redundant_state_action_count": 0,
+    "redundant_action_rate": 0.0,
+    "novel_state_action_count": 10,
+    "novel_experiment_rate": 1.0,
+    "no_change_action_count": 0,
+    "no_change_action_rate": 0.0,
+    "repeated_same_action_after_no_change": 0,
+    "no_change_action_persistence": 0.0,
+    "mean_confidence": 0.47000000000000003,
+    "mean_confidence_effective_action": 0.47000000000000003,
+    "mean_confidence_no_change_action": null,
+    "decision_latency_seconds_per_action": 5.248443245887756,
+    "tokens_per_action": 4464.2,
+    "solved": true,
+    "termination_reason": "solved"
+  },
+  "autonomy_score": 1.0
+}

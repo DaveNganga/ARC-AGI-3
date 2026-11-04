@@ -1,0 +1,90 @@
+{
+  "benchmark_id": "S5-16M-STRONGER-AI-v1",
+  "profile": "paper",
+  "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+  "scores": {
+    "G": {
+      "llm": 0.2,
+      "qahs": 0.0,
+      "delta": -0.2
+    },
+    "A": {
+      "llm": 0.9444444444444445,
+      "qahs": 1.0,
+      "delta": 0.05555555555555547
+    },
+    "Au": {
+      "llm": 0.9444444444444444,
+      "qahs": 0.7540740740740741,
+      "delta": -0.1903703703703703
+    },
+    "T": {
+      "llm": 0.5,
+      "qahs": 0.5416666666666666,
+      "delta": 0.04166666666666663
+    },
+    "R": {
+      "llm": 1.0,
+      "qahs": 0.0,
+      "delta": -1.0
+    }
+  },
+  "SAI": {
+    "llm": 0.7177777777777778,
+    "qahs": 0.45914814814814814,
+    "delta": -0.2586296296296297
+  },
+  "paired_domain_tests": {
+    "G": {
+      "n": 5,
+      "qahs_better": 0,
+      "llm_better": 1,
+      "ties": 4,
+      "two_sided_exact_sign_p": 1.0,
+      "llm_mean": 0.2,
+      "qahs_mean": 0.0,
+      "mean_delta": -0.2
+    },
+    "A": {
+      "n": 3,
+      "qahs_better": 1,
+      "llm_better": 0,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "llm_mean": 0.9444444444444445,
+      "qahs_mean": 1.0,
+      "mean_delta": 0.05555555555555547
+    },
+    "Au": {
+      "n": 5,
+      "qahs_better": 1,
+      "llm_better": 2,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "llm_mean": 0.9444444444444444,
+      "qahs_mean": 0.7540740740740741,
+      "mean_delta": -0.1903703703703703
+    },
+    "T": {
+      "n": 3,
+      "qahs_better": 1,
+      "llm_better": 0,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "llm_mean": 0.5,
+      "qahs_mean": 0.5416666666666666,
+      "mean_delta": 0.04166666666666663
+    },
+    "R": {
+      "n": 3,
+      "qahs_better": 0,
+      "llm_better": 1,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "llm_mean": 0.3333333333333333,
+      "qahs_mean": 0.0,
+      "mean_delta": -0.3333333333333333
+    }
+  },
+  "claim_discipline": "Improvement supports stronger reasoning characteristics under the predefined five-domain operational definition; it is not evidence of AGI/Strong AI or of quantum computational advantage."
+}

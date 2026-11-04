@@ -1,0 +1,676 @@
+{
+  "episode": {
+    "seed": 16062026,
+    "initial_world_ids": [
+      "P2",
+      "G0",
+      "M0",
+      "T2",
+      "I0",
+      "S0"
+    ],
+    "final_world_ids": [
+      "P2",
+      "G0",
+      "M0",
+      "T2",
+      "I0",
+      "S0"
+    ],
+    "scale": "S5",
+    "max_steps": 12,
+    "hypothesis_space_size": 16777216,
+    "hypothesis_bits": 24,
+    "perturbation_rate": 0.0
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 0,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "This is the first step with no evidence yet. R1 sits at (3,2) next to open cells, so a RIGHT move would show which object is controllable and how far it moves (one cell, two cells, or a slide until the barrier at column 4). RIGHT also heads toward the gap at (4,4) and the K/V objects on the right side. That supports later tests of passage rules and interactions, so it should give more discriminating information than the other directions.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1"
+          ],
+          "M": [
+            "M0",
+            "M2"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I0",
+            "I2"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.3,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 3,
+            "c": 8,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "K1",
+            "from": [
+              3,
+              7
+            ],
+            "to": [
+              3,
+              8
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 2,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 3,
+            "c": 8,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "RIGHT moved K1 from (3,7) to (3,8), a one-cell move, so K1 looks like the controlled object. K1 now sits on the right edge, so testing LEFT will show several things at once: whether the movement is reversed, whether it is one cell or two, and whether it slides until it hits something. It will also show whether K2 moves along with K1 (coupled or multiple-object control). LEFT is untested, and moving away from the wall avoids a step that gives no information.",
+        "leading_rules": {
+          "P": [
+            "P3",
+            "P15"
+          ],
+          "G": [
+            "G0",
+            "G2"
+          ],
+          "M": [
+            "M0",
+            "M2"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I0",
+            "I2"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.4,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "K1",
+            "from": [
+              3,
+              8
+            ],
+            "to": [
+              3,
+              7
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 3,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "DOWN",
+        "rationale": "K1 (at 3,7) appears to be the controlled object, moving one cell per action in both directions. K2 did not move, so control does not extend to every K-class object; it may depend on proximity or position. DOWN is untested. Moving down from (3,7) would take K1 into V's cell at (4,7), which tests the interaction with V: collect, push, block, hazard, or something else. It also tests vertical movement, so it is the most informative choice.",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P3",
+            "P7"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G8"
+          ],
+          "M": [
+            "M0",
+            "M3"
+          ],
+          "T": [
+            "T0"
+          ],
+          "I": [
+            "I0",
+            "I2",
+            "I1"
+          ],
+          "S": [
+            "S0"
+          ]
+        },
+        "confidence": 0.45,
+        "believes_solved": false,
+        "telemetry": {}
+      },
+      "action": "DOWN",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "R"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "V"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "K"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "K"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 3,
+        "solved_env": true,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "K1",
+            "from": [
+              3,
+              7
+            ],
+            "to": [
+              4,
+              7
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": true,
+        "failed_changed": false
+      },
+      "reward": 1,
+      "solved_env": true,
+      "failed_env": false,
+      "termination_reason": "solved"
+    }
+  ],
+  "summary": {
+    "solved": true,
+    "actions": 3,
+    "false_solution_events": 0,
+    "wall_seconds": 19.318782806396484,
+    "termination_reason": "solved",
+    "llm_calls": 3,
+    "input_tokens": 10979,
+    "output_tokens": 766,
+    "total_tokens": 11745,
+    "model": "claude-opus-5-5",
+    "mode": "anthropic",
+    "model_wall_seconds": 16.2974054813385
+  },
+  "change_turn": null,
+  "recovery_latency": null,
+  "agent_summary": {
+    "condition": "llm-only"
+  },
+  "measurements": {
+    "actions": 3,
+    "unique_actions": 3,
+    "action_counts": {
+      "UP": 0,
+      "DOWN": 1,
+      "LEFT": 1,
+      "RIGHT": 1
+    },
+    "action_diversity_fraction": 0.75,
+    "action_entropy_bits": 1.584962500721156,
+    "normalized_action_entropy": 0.792481250360578,
+    "redundant_state_action_count": 0,
+    "redundant_action_rate": 0.0,
+    "novel_state_action_count": 3,
+    "novel_experiment_rate": 1.0,
+    "no_change_action_count": 0,
+    "no_change_action_rate": 0.0,
+    "repeated_same_action_after_no_change": 0,
+    "no_change_action_persistence": 0.0,
+    "mean_confidence": 0.3833333333333333,
+    "mean_confidence_effective_action": 0.3833333333333333,
+    "mean_confidence_no_change_action": null,
+    "decision_latency_seconds_per_action": 5.4324684937795,
+    "tokens_per_action": 3915.0,
+    "solved": true,
+    "termination_reason": "solved"
+  },
+  "autonomy_score": 1.0
+}

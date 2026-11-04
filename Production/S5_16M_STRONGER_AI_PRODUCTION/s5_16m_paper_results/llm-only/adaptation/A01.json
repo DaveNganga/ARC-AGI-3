@@ -1,0 +1,2702 @@
+{
+  "episode": {
+    "seed": 16062227,
+    "initial_world_ids": [
+      "P0",
+      "G13",
+      "M0",
+      "T2",
+      "I3",
+      "S4"
+    ],
+    "final_world_ids": [
+      "P0",
+      "G13",
+      "M1",
+      "T2",
+      "I3",
+      "S4"
+    ],
+    "scale": "S5",
+    "max_steps": 12,
+    "hypothesis_space_size": 16777216,
+    "hypothesis_bits": 24,
+    "perturbation_rate": 0.0
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 2,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 0,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The RIGHT action is untested and can provide new evidence about the environment's interaction rules and object behavior. It may reveal whether movement is constrained by barriers, object interactions, or other spatial/topological rules, thereby helping to discriminate among plausible hypotheses such",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 148.90102434158325,
+          "total_duration_ns": 148894729270,
+          "load_duration_ns": 2460501,
+          "prompt_eval_count": 1825,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 42025106000,
+          "eval_count": 221,
+          "eval_duration_ns": 106341831000
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              2
+            ],
+            "to": [
+              3,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 2,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 1,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "DOWN",
+        "rationale": "The 'DOWN' action has not been tested yet and could provide new evidence about the environment's interaction rules and movement constraints. Testing this action will help discriminate among plausible hypotheses about object control, movement, and environmental topology, especially given the presence",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 160.7350459098816,
+          "total_duration_ns": 160732572155,
+          "load_duration_ns": 8109602,
+          "prompt_eval_count": 1900,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 52729942000,
+          "eval_count": 219,
+          "eval_duration_ns": 107972206000
+        }
+      },
+      "action": "DOWN",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 4,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              3
+            ],
+            "to": [
+              4,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 3,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 4,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 2,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "UP",
+        "rationale": "The 'UP' action has not been tested yet, and it can provide new evidence to help discriminate among plausible hypotheses. Testing 'UP' will allow us to observe how the environment responds to this new action, which can help narrow down the possible rule hypotheses governing the environment's state, ",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 172.95612788200378,
+          "total_duration_ns": 172954623920,
+          "load_duration_ns": 1983799,
+          "prompt_eval_count": 1975,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 54737939000,
+          "eval_count": 228,
+          "eval_duration_ns": 118194829000
+        }
+      },
+      "action": "UP",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 3,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              4,
+              3
+            ],
+            "to": [
+              3,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 4,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 3,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "LEFT",
+        "rationale": "The LEFT action has not been tested yet, and it can provide new evidence to help discriminate among plausible hypotheses. Testing LEFT will allow us to observe how the environment responds to this new action, which can help narrow down the possible rules governing object movement and interactions. A",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 182.5970869064331,
+          "total_duration_ns": 182592866316,
+          "load_duration_ns": 3070601,
+          "prompt_eval_count": 2050,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 61959315000,
+          "eval_count": 227,
+          "eval_duration_ns": 120605782000
+        }
+      },
+      "action": "LEFT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 1,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 4,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              3
+            ],
+            "to": [
+              3,
+              1
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 5,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 1,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 4,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The RIGHT action has not been tested yet, and it can provide new evidence about the movement dynamics and interaction rules. Testing RIGHT will help discriminate among plausible hypotheses about object movement and control mechanisms, especially given the current state of the environment and the un-",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 221.2442548274994,
+          "total_duration_ns": 221241286723,
+          "load_duration_ns": 1647665,
+          "prompt_eval_count": 2125,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 71067636000,
+          "eval_count": 266,
+          "eval_duration_ns": 150149135000
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 5,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              1
+            ],
+            "to": [
+              3,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 6,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 5,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The RIGHT action has been tested twice, but its outcomes are consistent. However, to maximize information gain, testing an untested action like LEFT or UP could provide new evidence about the environment's interaction rules. Since LEFT and UP have not been tested yet, choosing LEFT would allow us to",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 216.65186500549316,
+          "total_duration_ns": 216647941100,
+          "load_duration_ns": 4149201,
+          "prompt_eval_count": 2200,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 79395569000,
+          "eval_count": 228,
+          "eval_duration_ns": 137223291999
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 6,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 7,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 6,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The RIGHT action has been tested three times, but the most recent test (E6) resulted in no movement, which may indicate a change in the environment or a new rule affecting movement. Testing RIGHT again could provide new evidence about whether the environment has changed or if there is a new rule in ",
+        "leading_rules": {
+          "P": [
+            "P12",
+            "P13",
+            "P14"
+          ],
+          "G": [
+            "G7",
+            "G13"
+          ],
+          "M": [
+            "M14"
+          ],
+          "T": [
+            "T13",
+            "T14"
+          ],
+          "I": [
+            "I14"
+          ],
+          "S": [
+            "S15"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 187.65736746788025,
+          "total_duration_ns": 187655518990,
+          "load_duration_ns": 2456601,
+          "prompt_eval_count": 2258,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 81257102000,
+          "eval_count": 174,
+          "eval_duration_ns": 106366523000
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 7,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 8,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 7,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "UP",
+        "rationale": "The UP action has not been tested yet, and it can provide new evidence about the movement dynamics and potential interactions. This action is expected to help discriminate among plausible hypotheses about the movement rules and object interactions, especially given the current state of the agent and",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 217.01263976097107,
+          "total_duration_ns": 217010885038,
+          "load_duration_ns": 3717501,
+          "prompt_eval_count": 2316,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 89212473000,
+          "eval_count": 221,
+          "eval_duration_ns": 127765810000
+        }
+      },
+      "action": "UP",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 1,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 8,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              3
+            ],
+            "to": [
+              1,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 9,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 1,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 8,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The RIGHT action has been tested most frequently (4 times) and has shown consistent movement of object '11' without triggering any changes or barriers. However, the lack of observed interaction with other objects or environmental changes suggests that further testing of RIGHT in different contexts (",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 226.77129697799683,
+          "total_duration_ns": 226765107973,
+          "load_duration_ns": 2271601,
+          "prompt_eval_count": 2391,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 96650904000,
+          "eval_count": 215,
+          "eval_duration_ns": 130083767000
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 1,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 9,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 10,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 1,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 9,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "DOWN",
+        "rationale": "The action 'DOWN' has been tested only once (E2), while other actions like 'RIGHT' have been tested multiple times. Testing 'DOWN' again in the current context can provide new evidence about the movement dynamics and potential interactions with the environment, helping to distinguish between rules (",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 255.11428999900818,
+          "total_duration_ns": 255111898248,
+          "load_duration_ns": 1779778,
+          "prompt_eval_count": 2449,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 120470319000,
+          "eval_count": 227,
+          "eval_duration_ns": 134613557999
+        }
+      },
+      "action": "DOWN",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 10,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              1,
+              3
+            ],
+            "to": [
+              3,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 11,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 10,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "RIGHT",
+        "rationale": "The action 'RIGHT' has been tested multiple times (5 times) and has shown consistent movement of object '11' without triggering any changes or interactions. However, the current state of the environment suggests that object '11' is at position [3,3], and the only untested action is 'LEFT'. Testing '",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 275.6534614562988,
+          "total_duration_ns": 275650555295,
+          "load_duration_ns": 2210301,
+          "prompt_eval_count": 2526,
+          "prompt_eval_cached_count": 1365,
+          "prompt_eval_duration_ns": 104784264000,
+          "eval_count": 283,
+          "eval_duration_ns": 170836063000
+        }
+      },
+      "action": "RIGHT",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 11,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": false
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": false,
+      "termination_reason": null
+    },
+    {
+      "turn": 12,
+      "state_before": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 3,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 11,
+        "solved_env": false,
+        "failed_env": false,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "agent": {
+        "selected_action": "UP",
+        "rationale": "The UP action has been tested twice, but the current state of the agent (object '11' at [3,3]) suggests that moving UP to [1,3] could provide new information about potential interactions or movement constraints. This action is untested in the current context and could help distinguish between rules,",
+        "leading_rules": {
+          "P": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "G": [
+            "G0",
+            "G1",
+            "G2",
+            "G3"
+          ],
+          "M": [
+            "M0",
+            "M1",
+            "M2",
+            "M3"
+          ],
+          "T": [
+            "T0",
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "I": [
+            "I0",
+            "I1",
+            "I2",
+            "I3"
+          ],
+          "S": [
+            "S0",
+            "S1",
+            "S2",
+            "S3"
+          ]
+        },
+        "confidence": 0.75,
+        "believes_solved": false,
+        "telemetry": {
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "wall_seconds": 257.7675018310547,
+          "total_duration_ns": 257765764531,
+          "load_duration_ns": 1655266,
+          "prompt_eval_count": 2585,
+          "prompt_eval_cached_count": 1366,
+          "prompt_eval_duration_ns": 112804744000,
+          "eval_count": 236,
+          "eval_duration_ns": 143976343000
+        }
+      },
+      "action": "UP",
+      "state_after": {
+        "size": 8,
+        "objects": [
+          {
+            "r": 1,
+            "c": 3,
+            "active": false,
+            "symbol": "1"
+          },
+          {
+            "r": 4,
+            "c": 7,
+            "active": false,
+            "symbol": "2"
+          },
+          {
+            "r": 3,
+            "c": 7,
+            "active": false,
+            "symbol": "3"
+          },
+          {
+            "r": 7,
+            "c": 2,
+            "active": false,
+            "symbol": "3"
+          }
+        ],
+        "barriers": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "available_actions": [
+          "UP",
+          "DOWN",
+          "LEFT",
+          "RIGHT"
+        ],
+        "step": 12,
+        "solved_env": false,
+        "failed_env": true,
+        "legend": "Symbols are arbitrary visual identities; infer their roles from interaction."
+      },
+      "observation_delta": {
+        "moved": [
+          {
+            "object": "11",
+            "from": [
+              3,
+              3
+            ],
+            "to": [
+              1,
+              3
+            ]
+          }
+        ],
+        "changed": [],
+        "removed": [],
+        "added": [],
+        "barriers_removed": [],
+        "barriers_added": [],
+        "solved_changed": false,
+        "failed_changed": true
+      },
+      "reward": 0,
+      "solved_env": false,
+      "failed_env": true,
+      "termination_reason": "action_budget_exhausted"
+    }
+  ],
+  "summary": {
+    "solved": false,
+    "actions": 12,
+    "false_solution_events": 0,
+    "wall_seconds": 2523.07559633255,
+    "termination_reason": "action_budget_exhausted",
+    "llm_calls": 12,
+    "input_tokens": 26600,
+    "output_tokens": 2745,
+    "total_tokens": 29345,
+    "model": "qwen3:8b",
+    "mode": "ollama",
+    "model_wall_seconds": 2523.061962366104
+  },
+  "change_turn": 4,
+  "recovery_latency": 0,
+  "agent_summary": {
+    "condition": "llm-only"
+  },
+  "measurements": {
+    "actions": 12,
+    "unique_actions": 4,
+    "action_counts": {
+      "UP": 3,
+      "DOWN": 2,
+      "LEFT": 1,
+      "RIGHT": 6
+    },
+    "action_diversity_fraction": 1.0,
+    "action_entropy_bits": 1.7295739585136223,
+    "normalized_action_entropy": 0.8647869792568111,
+    "redundant_state_action_count": 3,
+    "redundant_action_rate": 0.25,
+    "novel_state_action_count": 9,
+    "novel_experiment_rate": 0.75,
+    "no_change_action_count": 4,
+    "no_change_action_rate": 0.3333333333333333,
+    "repeated_same_action_after_no_change": 1,
+    "no_change_action_persistence": 0.25,
+    "mean_confidence": 0.75,
+    "mean_confidence_effective_action": 0.75,
+    "mean_confidence_no_change_action": 0.75,
+    "decision_latency_seconds_per_action": 210.25516353050867,
+    "tokens_per_action": 2445.4166666666665,
+    "solved": false,
+    "termination_reason": "action_budget_exhausted"
+  },
+  "autonomy_score": 0.75
+}

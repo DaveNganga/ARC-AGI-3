@@ -1,0 +1,36 @@
+{
+  "metric_spec_version": "1.1-S5-production",
+  "composite": {
+    "name": "SAI",
+    "formula": "equal-weight mean of G,A,Au,T,R",
+    "range": [0,1]
+  },
+  "dimensions": {
+    "generalization": {
+      "symbol": "G",
+      "formula": "held-out solve rate",
+      "higher_is_better": true
+    },
+    "adaptation": {
+      "symbol": "A",
+      "formula": "mean(max(0,1-L_i/B)), B=6; unrecovered episodes use L_i=B",
+      "higher_is_better": true
+    },
+    "autonomy": {
+      "symbol": "Au",
+      "formula": "mean_i((NER_i + (1-RAR_i) + (1-NCAP_i))/3) over generalization episodes",
+      "higher_is_better": true
+    },
+    "transfer": {
+      "symbol": "T",
+      "formula": "mean paired warm-vs-cold score: 1 if warm-only solve, 0 if cold-only solve, 0.5 if both fail, and 0.5+0.5*(cold_actions-warm_actions)/cold_actions if both solve",
+      "higher_is_better": true
+    },
+    "robustness": {
+      "symbol": "R",
+      "formula": "min(1, perturbed solve rate / clean solve rate) when clean solve rate>0; R=0 when clean solve rate=0 and clean_capability_absent=true",
+      "higher_is_better": true,
+      "production_correction": "Prototype v1.0 mapped 0 clean and 0 perturbed performance to R=1. Production v1.1 pre-specifies R=0 for zero clean capability to avoid awarding perfect robustness to an incapable system."
+    }
+  }
+}

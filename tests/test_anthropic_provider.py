@@ -32,6 +32,22 @@ class FakeClient:
         self.requests.append(kwargs)
         return self.responses.pop(0)
 
+    def stream(self, **kwargs):
+        client = self
+
+        class Stream:
+            def __enter__(self):
+                client.requests.append(kwargs)
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def get_final_message(self):
+                return client.responses.pop(0)
+
+        return Stream()
+
 
 def harness_schemas():
     caller = SimpleNamespace(model="m", reasoning_effort="medium")

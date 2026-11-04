@@ -8,7 +8,8 @@ from typing import Any
 DEFAULT_MODEL = "claude-opus-5-5"
 DEFAULT_EFFORT = "medium"
 EFFORTS = {"low", "medium", "high", "xhigh", "max"}
-MAX_TOKENS = 16000
+# Claude thinking counts toward max_tokens; 16000 cut off 2 of 47 calls in a 40-action lp85 run.
+MAX_TOKENS = 64000
 MAX_LOGGED_ERRORS = 20
 # Attempts per call when the response breaks a constraint the API cannot enforce (see strip_unsupported).
 CONSTRAINT_ATTEMPTS = 3
@@ -155,7 +156,9 @@ class AnthropicJSONCaller:
             raise
 
     def _request_once(self, content: Any, schema: dict[str, Any]) -> dict[str, Any]:
-        response = self.client.messages.create(
+        # Streamed: the SDK refuses a non-streaming request with a max_tokens this large,
+        # and adaptive thinking at medium effort often needs well over 16k output tokens.
+        with self.client.messages.stream(
             model=self.model,
             max_tokens=MAX_TOKENS,
             messages=[{"role": "user", "content": content}],
@@ -163,7 +166,8 @@ class AnthropicJSONCaller:
                 "format": {"type": "json_schema", "schema": schema},
                 "effort": self.reasoning_effort,
             },
-        )
+        ) as stream:
+            response = stream.get_final_message()
         usage = getattr(response, "usage", None)
         self.last_usage = {
             "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),

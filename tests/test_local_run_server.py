@@ -89,10 +89,51 @@ class LocalRunSessionTests(unittest.TestCase):
     @patch.dict("os.environ", {"ARC_API_KEY": "arc", "OPENAI_API_KEY": "openai"}, clear=True)
     def test_rejects_unapproved_model_and_effort(self) -> None:
         base = {"source": "arc", "game": "r11l", "batch": "test", "seed": 0, "max_steps": 8}
-        with self.assertRaisesRegex(runner.PublicError, "Luna or GPT-6 Sol"):
+        with self.assertRaisesRegex(runner.PublicError, "GPT-6 Luna, GPT-6 Sol"):
             runner.validate({**base, "model": "unknown"})
         with self.assertRaisesRegex(runner.PublicError, "reasoning effort"):
             runner.validate({**base, "model": "gpt-6-luna", "reasoning_effort": "extreme"})
+
+    @patch.dict("os.environ", {"ARC_API_KEY": "arc", "ANTHROPIC_API_KEY": "anthropic"}, clear=True)
+    def test_claude_model_needs_anthropic_not_openai_credentials(self) -> None:
+        base = {"source": "arc", "game": "lp85", "batch": "claude-haiku-v12-final-lp85", "seed": 6, "max_steps": 40,
+                "reasoning_effort": "medium"}
+        self.assertEqual(runner.validate({**base, "model": "claude-haiku-5-5"})[5], "claude-haiku-5-5")
+        with self.assertRaisesRegex(runner.PublicError, "OpenAI credentials"):
+            runner.validate({**base, "model": "gpt-6-luna"})
+        with self.assertRaisesRegex(runner.PublicError, "reasoning effort none"):
+            runner.validate({**base, "model": "claude-haiku-5-5", "reasoning_effort": "none"})
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
+            with self.assertRaisesRegex(runner.PublicError, "ANTHROPIC_API_KEY"):
+                runner.validate({**base, "model": "claude-haiku-5-5"})
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "openai", "ANTHROPIC_API_KEY": "anthropic"}, clear=True)
+    def test_claude_models_are_refused_for_arc2(self) -> None:
+        with self.assertRaisesRegex(runner.PublicError, "ARC-AGI-3 runs only"):
+            runner.validate({"source": "arc2", "game": "136b0064", "seed": 0, "max_steps": 1,
+                             "model": "claude-haiku-5-5", "reasoning_effort": "medium"})
+
+    @patch.dict("os.environ", {"ARC_API_KEY": "arc", "OPENAI_API_KEY": "openai", "ANTHROPIC_API_KEY": "anthropic"}, clear=True)
+    def test_command_adds_anthropic_provider_only_for_claude(self) -> None:
+        class Captured(Exception):
+            pass
+
+        commands = []
+
+        def fake_popen(command, **kwargs):
+            commands.append(command)
+            raise Captured
+
+        base = {"source": "arc", "game": "lp85", "batch": "b", "seed": 8, "max_steps": 40,
+                "reasoning_effort": "medium", "harness": "v12"}
+        for model in ("claude-haiku-5-5", "gpt-6-luna"):
+            with patch.object(runner.subprocess, "Popen", fake_popen), self.assertRaises(Captured):
+                runner.run_experiment({**base, "model": model})
+        claude, gpt = commands
+        self.assertEqual(claude[claude.index("--provider") + 1], "anthropic")
+        self.assertEqual(claude[claude.index("--model") + 1], "claude-haiku-5-5")
+        self.assertNotIn("--provider", gpt)
+        self.assertEqual(gpt[gpt.index("--harness") + 1], "v12")
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "openai"}, clear=True)
     def test_arc2_batch_uses_curated_tasks_without_arc_credentials(self) -> None:

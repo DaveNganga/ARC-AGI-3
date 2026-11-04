@@ -22,7 +22,9 @@ HOST = "127.0.0.1"
 PORT = int(os.environ.get("QAHS_RUNNER_PORT", "8765"))
 GAME_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 BATCH_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
-MODELS = {"gpt-6-luna", "gpt-6-sol"}
+MODELS = {"gpt-6-luna", "gpt-6-sol", "claude-haiku-5-5", "claude-opus-5-5"}
+# ARC-AGI-3 only: qahs-arc has an Anthropic provider; qahs-arc2 is OpenAI-only.
+ANTHROPIC_MODELS = {"claude-haiku-5-5", "claude-opus-5-5"}
 ARC2_TASKS = {
     "136b0064", "1818057f", "291dc1e1", "2ba387bc", "31f7f899", "3dc255db",
     "45a5af55", "58f5dbd5", "8f3a5a89", "981571dc", "b5ca7ac4", "b99e7126",
@@ -125,7 +127,11 @@ def validate(payload: dict) -> tuple[str, str, int, int, str | None, str, str]:
     model = str(payload.get("model") or os.environ.get("OPENAI_MODEL") or "gpt-6-luna").strip().lower()
     reasoning_effort = str(payload.get("reasoning_effort") or os.environ.get("OPENAI_REASONING_EFFORT") or "medium").strip().lower()
     if model not in MODELS:
-        raise PublicError("Choose GPT-6 Luna or GPT-6 Sol.")
+        raise PublicError("Choose GPT-6 Luna, GPT-6 Sol, Claude Haiku 5.5, or Claude Opus 5.5.")
+    if model in ANTHROPIC_MODELS and source == "arc2":
+        raise PublicError("Claude models are available for ARC-AGI-3 runs only.")
+    if model in ANTHROPIC_MODELS and reasoning_effort == "none":
+        raise PublicError("Claude models do not support reasoning effort none.")
     if reasoning_effort not in REASONING_EFFORTS:
         raise PublicError("Choose a valid reasoning effort.")
     if source == "arc2" and game not in ARC2_TASKS:
@@ -133,7 +139,10 @@ def validate(payload: dict) -> tuple[str, str, int, int, str | None, str, str]:
     if source == "arc":
         if not os.environ.get("ARC_API_KEY"):
             raise PublicError("ARC_API_KEY is not available in this terminal.")
-        if not os.environ.get("OPENAI_API_KEY"):
+        if model in ANTHROPIC_MODELS:
+            if not os.environ.get("ANTHROPIC_API_KEY"):
+                raise PublicError("ANTHROPIC_API_KEY is not available in this terminal.")
+        elif not os.environ.get("OPENAI_API_KEY"):
             raise PublicError("OpenAI credentials are not available in this terminal.")
     if source == "arc2" and not os.environ.get("OPENAI_API_KEY"):
         raise PublicError("OpenAI credentials are not available in this terminal.")
@@ -154,6 +163,8 @@ def run_experiment(payload: dict, progress_callback=None) -> dict:
                    "--game", game, "--condition", "compare", "--seed", str(seed),
                    "--max-steps", str(steps), "--model", model, "--reasoning-effort", reasoning_effort,
                    "--harness", harness]
+        if model in ANTHROPIC_MODELS:
+            command.extend(["--provider", "anthropic"])
     if batch:
         command.extend(["--batch", batch])
     timeout_value = int(os.environ.get("QAHS_EXPERIMENT_TIMEOUT", "0"))

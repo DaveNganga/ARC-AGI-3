@@ -51,6 +51,17 @@ class StuckEnvironment(DemoArcEnvironment):
 
 
 class ExportTests(unittest.TestCase):
+    def test_label_standardizes_claude_run_names(self):
+        data = {
+            "game_id": "lp85", "seed": 8, "action_budget": 40,
+            "model": "claude-haiku-5-5", "batch_id": "claude-haiku-v12-final-lp85",
+            "harness_version": "v12-structured-world-models",
+        }
+        self.assertEqual(
+            export.label(Path("ignored.json"), data),
+            "lp85 · seed 8 · Haiku 5.5 · 40 actions · v12-final-lp85",
+        )
+
     def test_missing_source_keeps_published_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "runs"

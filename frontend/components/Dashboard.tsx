@@ -49,7 +49,7 @@ type Run = {
 };
 type ManifestItem = {
   filename: string;
-  label: string;
+  label?: string;
   benchmark?: string;
   game_id?: string;
   seed?: number;
@@ -60,6 +60,31 @@ type ManifestItem = {
   input_representation?: string;
   batch_id?: string | null;
 };
+
+const MODEL_LABELS: Record<string, string> = {
+  "gpt-6-luna": "Luna",
+  "gpt-6-sol": "GPT-6 Sol",
+  "claude-haiku-5-5": "Haiku 5.5",
+  "claude-opus-5-5": "Opus 5.5",
+};
+
+function compactBatchName(batch?: string | null) {
+  if (!batch) return "";
+  return batch.replace(/^claude-haiku-/, "").replace(/^claude-/, "");
+}
+
+function displayRunLabel(item: ManifestItem) {
+  const game = String(item.game_id ?? "").trim();
+  if (!game) return item.label || item.filename;
+  const parts = [game];
+  if (item.seed !== null && item.seed !== undefined) parts.push(`seed ${item.seed}`);
+  const model = item.model ? MODEL_LABELS[item.model] ?? item.model : "";
+  if (model) parts.push(model);
+  if (item.action_budget !== null && item.action_budget !== undefined) parts.push(`${item.action_budget} actions`);
+  const batch = compactBatchName(item.batch_id);
+  if (batch && batch !== "unbatched") parts.push(batch);
+  return parts.length > 1 ? parts.join(" · ") : item.label || item.filename;
+}
 
 const ARC_COLORS = [
   "#ffffff", "#f0f0f0", "#c8c8c8", "#969696", "#4b4b4b", "#000000",
@@ -82,7 +107,6 @@ function actionKey(candidate?: Candidate) {
   if (!candidate) return "missing";
   return [candidate.action_type, candidate.x ?? "", candidate.y ?? "", candidate.next_action_type ?? "", candidate.next_x ?? "", candidate.next_y ?? ""].join(":");
 }
-function uniqueActions(episode: Episode) { return new Set(turns(episode).map((turn) => actionKey(turn.selected_candidate))).size; }
 function explorationCoverage(episode: Episode) {
   const attempted = new Set(turns(episode).map((turn) => actionKey(turn.selected_candidate)));
   const offered = new Set(turns(episode).flatMap((turn) => turn.proposal.action_candidates ?? []).map(actionKey));
@@ -109,24 +133,78 @@ function posteriorShift(turn: Turn) {
   ids.forEach((id) => { distance += Math.abs(Number(before[id] ?? 0) - Number(after[id] ?? 0)); });
   return distance / 2;
 }
-function evidenceYielding(turn: Turn) {
-  const diagnostics = turn.search_diagnostics;
-  const levelsChanged = Number(turn.observation_after.levels_completed ?? 0) !== Number(turn.observation_before.levels_completed ?? 0);
-  const terminalSignal = ["WIN", "GAME_OVER", "FAILED"].includes(String(turn.observation_after.state ?? "").toUpperCase());
-  const physical = String(diagnostics?.physical_outcome ?? diagnostics?.observed_outcome ?? "").toUpperCase();
-  const informativePhysicalChange = Boolean(physical && !["NO_CHANGE", "UNKNOWN", "NONE"].includes(physical));
-  const procedureEvidence = String(diagnostics?.procedure_evidence_status ?? "").toLowerCase();
-  const explicitBeliefUpdate = ["refuted", "contradicted", "supported", "confirmed", "validated", "validated_for_level", "weakened"].includes(procedureEvidence)
-    || Boolean(diagnostics?.validated_for_level)
-    || Boolean(diagnostics?.retired_hypotheses?.length)
-    || posteriorShift(turn) >= .05;
-  // Frame change is only a fallback for old traces that predate classified
-  // physical outcomes; it is not allowed to override an explicit NO_CHANGE.
-  const legacyFrameEvidence = !physical && changed(turn) > 0;
-  return levelsChanged || terminalSignal || informativePhysicalChange || explicitBeliefUpdate || legacyFrameEvidence;
+function normalizedOutcome(value?: string | null) {
+  const outcome = String(value ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (["UNCHANGED", "NO_VISIBLE_CHANGE", "NONE"].includes(outcome)) return "NO_CHANGE";
+  return outcome;
 }
-function usefulActions(episode: Episode) { return turns(episode).filter(evidenceYielding).length; }
-function usefulActionRate(episode: Episode) { return turns(episode).length ? 100 * usefulActions(episode) / turns(episode).length : 0; }
+function observedOutcome(turn: Turn) {
+  const classified = normalizedOutcome(turn.search_diagnostics?.physical_outcome ?? turn.search_diagnostics?.observed_outcome);
+  if (classified && classified !== "UNKNOWN") return classified;
+  if (Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0)) return "PROGRESS";
+  return changed(turn) > 0 ? "STATE_CHANGE" : "NO_CHANGE";
+}
+function selectedPredictions(turn: Turn) {
+  const selectedId = turn.selected_candidate?.candidate_id;
+  if (!selectedId) return [];
+  const proposalPredictions = (turn.proposal.hypotheses ?? []).map((hypothesis) => normalizedOutcome(hypothesis.predictions?.[selectedId])).filter(Boolean);
+  const matrixPredictions = (turn.search_diagnostics?.prediction_matrix ?? []).map((row) => normalizedOutcome(row.predictions.find((prediction) => prediction.candidate_id === selectedId)?.outcome)).filter(Boolean);
+  return proposalPredictions.length ? proposalPredictions : matrixPredictions;
+}
+function recordedBeliefRevision(turn: Turn) {
+  const procedureEvidence = String(turn.search_diagnostics?.procedure_evidence_status ?? "").toLowerCase();
+  const reflectedRefutation = turn.reflection?.beliefs?.some((belief) => ["refuted", "contradicted", "weakened"].includes(String(belief.status).toLowerCase()));
+  return ["refuted", "contradicted", "weakened"].includes(procedureEvidence)
+    || Boolean(turn.search_diagnostics?.retired_hypotheses?.length)
+    || Boolean(reflectedRefutation)
+    || posteriorShift(turn) >= .05;
+}
+function meaningfulRefutation(turn: Turn) {
+  const predictions = selectedPredictions(turn);
+  const distinct = new Set(predictions);
+  const observed = observedOutcome(turn);
+  return distinct.size >= 2 && distinct.has(observed) && recordedBeliefRevision(turn);
+}
+function progressOutcome(turn: Turn) {
+  const levelProgress = Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0);
+  return levelProgress || String(turn.observation_after.state ?? "").toUpperCase() === "WIN";
+}
+function usefulActionCredit(turn: Turn) {
+  if (progressOutcome(turn)) return 1;
+  if (meaningfulRefutation(turn)) return .5;
+  return 0;
+}
+function externallyUsefulRate(episode: Episode) {
+  const allTurns = turns(episode);
+  return allTurns.length ? 100 * allTurns.reduce((sum, turn) => sum + usefulActionCredit(turn), 0) / allTurns.length : 0;
+}
+function explorationConversionRate(episode: Episode) {
+  const converted = new Map<string, boolean>();
+  turns(episode).forEach((turn) => {
+    const key = actionKey(turn.selected_candidate);
+    if (key === "missing") return;
+    converted.set(key, Boolean(converted.get(key)) || usefulActionCredit(turn) > 0);
+  });
+  return converted.size ? 100 * Array.from(converted.values()).filter(Boolean).length / converted.size : 0;
+}
+function adaptiveRecoveryStats(episode: Episode) {
+  const allTurns = turns(episode);
+  const failures = allTurns.map((turn, index) => ({ turn, index })).filter(({ turn }) => meaningfulRefutation(turn));
+  const latencies: number[] = [];
+  failures.forEach(({ turn, index }) => {
+    const failedAction = actionKey(turn.selected_candidate);
+    const recoveredAt = allTurns.findIndex((candidate, candidateIndex) => candidateIndex > index
+      && actionKey(candidate.selected_candidate) !== failedAction
+      && usefulActionCredit(candidate) > 0);
+    if (recoveredAt > index) latencies.push(recoveredAt - index);
+  });
+  return {
+    opportunities: failures.length,
+    recovered: latencies.length,
+    rate: failures.length ? latencies.length / failures.length : 0,
+    meanLatency: latencies.length ? latencies.reduce((sum, latency) => sum + latency, 0) / latencies.length : null,
+  };
+}
 function actionsPerLevel(episode: Episode) { return levels(episode) > 0 ? turns(episode).length / levels(episode) : null; }
 function overrides(episode: Episode) {
   return turns(episode).filter((turn) => {
@@ -175,16 +253,20 @@ type DisplayMetric = { name: string; about: string; value: (episode: Episode) =>
 const METRICS: DisplayMetric[] = [
   { name: "Progress", about: "Game-reported levels completed; visible movement alone does not count.", value: levels, decimals: 0 },
   { name: "Efficiency", about: "Executed actions per completed level; lower is better and an unsolved run is not assigned a score.", value: actionsPerLevel, decimals: 1, lowerIsBetter: true },
-  { name: "Exploration", about: "Share of distinct physical actions attempted from the actions offered during this trace; breadth is descriptive, not automatically better.", value: explorationCoverage, suffix: "%", decimals: 0 },
-  { name: "Useful actions", about: "Share of actions yielding objective evidence: progress, terminal feedback, a classified state change, or a material belief update.", value: usefulActionRate, suffix: "%", decimals: 0 },
+  { name: "Exploration breadth", about: "Share of distinct physical actions attempted from those offered; breadth is descriptive, not automatically stronger.", value: explorationCoverage, suffix: "%", decimals: 0 },
+  { name: "Evidence conversion", about: "Share of distinct attempted actions that produced game progress or an objectively discriminating, correctly observed hypothesis refutation.", value: explorationConversionRate, suffix: "%", decimals: 0 },
+  { name: "Externally useful", about: "Progress earns full credit and an objectively discriminating refutation earns half credit. Internal belief movement or generic frame change alone earns none.", value: externallyUsefulRate, suffix: "%", decimals: 0 },
+  { name: "Adaptive recovery", about: "Share of objective refutations followed by a different action that produced progress or another externally grounded discrimination. No refutation opportunity scores zero.", value: (episode) => 100 * adaptiveRecoveryStats(episode).rate, suffix: "%", decimals: 0 },
 ];
 
 const BATCH_METRICS = [
   { name: "Combined", about: "Exploratory v4 score: 50% progress, 20% action efficiency, 20% search quality, 10% call efficiency", value: (episode: Episode, run?: Run) => Math.round(run && supportsCombined(run) ? combinedScores(run).get(episode)?.combined ?? 0 : 0), suffix: "" },
   { name: "Progress", about: "Levels completed", value: levels, suffix: "" },
   { name: "Actions", about: "Actions used; lower is better when progress is equal", value: (episode: Episode) => turns(episode).length, suffix: "" },
-  { name: "Exploration %", about: "Share of the offered physical action space tested; breadth is descriptive rather than inherently good", value: (episode: Episode) => Math.round(explorationCoverage(episode)), suffix: "%" },
-  { name: "Useful %", about: "Share of actions that yielded objective environmental or belief-update evidence", value: (episode: Episode) => Math.round(usefulActionRate(episode)), suffix: "%" },
+  { name: "Exploration breadth %", about: "Share of the offered physical action space tested; descriptive rather than inherently good", value: (episode: Episode) => Math.round(explorationCoverage(episode)), suffix: "%" },
+  { name: "Evidence conversion %", about: "Share of distinct attempted actions converted into progress or objective hypothesis discrimination", value: (episode: Episode) => Math.round(explorationConversionRate(episode)), suffix: "%" },
+  { name: "Externally useful %", about: "Progress receives full credit and an objectively discriminating refutation receives half credit", value: (episode: Episode) => Math.round(externallyUsefulRate(episode)), suffix: "%" },
+  { name: "Adaptive recovery %", about: "Share of objective refutations followed by a productive strategy change", value: (episode: Episode) => Math.round(100 * adaptiveRecoveryStats(episode).rate), suffix: "%" },
   { name: "LLM calls", about: "Logical model requests; a shared cache hit still counts for each condition.", value: modelCalls, suffix: "" },
   { name: "Time", about: "Comparable compute time with shared model-cache latency normalized.", value: (episode: Episode) => Math.round(comparableTime(episode)), suffix: "s" },
 ];
@@ -508,46 +590,15 @@ function adaptationScore(episode: Episode) {
     .filter(({ turn }) => Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0));
   if (!transitions.length) return 0;
   const scores = transitions.map(({ index }) => {
-    const recoveredAt = allTurns.findIndex((turn, candidateIndex) => candidateIndex > index && objectiveActionEvidence(turn));
+    const recoveredAt = allTurns.findIndex((turn, candidateIndex) => candidateIndex > index && usefulActionCredit(turn) > 0);
     const latency = recoveredAt > index ? recoveredAt - index : budget;
     return Math.max(0, 1 - latency / budget);
   });
   return scores.reduce((sum, value) => sum + value, 0) / scores.length;
 }
 
-function noChange(turn: Turn) {
-  const physical = String(turn.search_diagnostics?.physical_outcome ?? turn.search_diagnostics?.observed_outcome ?? "").toUpperCase();
-  if (physical) return physical === "NO_CHANGE";
-  return changed(turn) === 0
-    && Number(turn.observation_after.levels_completed ?? 0) === Number(turn.observation_before.levels_completed ?? 0);
-}
-
-function objectiveActionEvidence(turn: Turn) {
-  const physical = String(turn.search_diagnostics?.physical_outcome ?? turn.search_diagnostics?.observed_outcome ?? "").toUpperCase();
-  const levelChanged = Number(turn.observation_after.levels_completed ?? 0) !== Number(turn.observation_before.levels_completed ?? 0);
-  const terminal = ["WIN", "GAME_OVER", "FAILED"].includes(String(turn.observation_after.state ?? "").toUpperCase());
-  if (levelChanged || terminal) return true;
-  if (physical) return !["NO_CHANGE", "UNKNOWN", "NONE"].includes(physical);
-  return changed(turn) > 0;
-}
-
 function autonomyScore(episode: Episode) {
-  const allTurns = turns(episode);
-  if (!allTurns.length) return 0;
-  let noChangeActions = 0;
-  let repeatedAfterNoChange = 0;
-  allTurns.forEach((turn) => {
-    if (noChange(turn)) noChangeActions += 1;
-  });
-  for (let index = 1; index < allTurns.length; index += 1) {
-    const previous = allTurns[index - 1];
-    const current = allTurns[index];
-    if (noChange(previous) && actionKey(previous.selected_candidate) === actionKey(current.selected_candidate)) repeatedAfterNoChange += 1;
-  }
-  const novelty = uniqueActions(episode) / allTurns.length;
-  const persistenceAvoidance = 1 - repeatedAfterNoChange / Math.max(1, noChangeActions);
-  const evidenceYield = allTurns.filter(objectiveActionEvidence).length / allTurns.length;
-  return (novelty + persistenceAvoidance + evidenceYield) / 3;
+  return adaptiveRecoveryStats(episode).rate;
 }
 
 const CAPABILITIES = [
@@ -595,7 +646,7 @@ function CapabilityComparison({ run }: { run: Run }) {
         <span className="capability-number">{signedScore(quantumSai - llmSai)}</span>
       </div>
     </div>
-    <p className="metric-about capability-note">G is completed-level share; A is normalized recovery after a level transition; Au averages distinct physical-action rate, avoidance of repetition after no change, and objective environmental-evidence yield. T and R are 0.000 because this run does not contain the required paired conditions.</p>
+    <p className="metric-about capability-note">G is completed-level share; A is normalized recovery after a level transition using externally grounded evidence; Au is adaptive recovery after an objectively discriminating refutation. Internal belief movement and generic frame changes receive no credit. T and R are 0.000 because this run does not contain the required paired conditions.</p>
   </section>;
 }
 
@@ -879,9 +930,10 @@ export default function Dashboard() {
       return response.json();
     }).then((items: ManifestItem[]) => {
       if (!items.length) throw new Error("No saved experiments are available yet.");
-      setManifest(items);
-      setFilename(preferred && items.some((item) => item.filename === preferred) ? preferred : items[0]?.filename ?? "");
-      const firstBatch = items.find((item) => item.batch_id)?.batch_id;
+      const normalized = items.map((item) => ({ ...item, label: displayRunLabel(item) }));
+      setManifest(normalized);
+      setFilename(preferred && normalized.some((item) => item.filename === preferred) ? preferred : normalized[0]?.filename ?? "");
+      const firstBatch = normalized.find((item) => item.batch_id)?.batch_id;
       setBatchId((current) => current || firstBatch || "");
     }).catch((reason) => setError(reason.message));
   }, []);
@@ -929,7 +981,7 @@ export default function Dashboard() {
       <main>
         <header className="banner"><h1>QAHS: comparing LLM, classical search, and quantum search</h1></header>
         <div className="view-switch" role="group" aria-label="Result view"><button className={view === "single" ? "active" : ""} onClick={() => setView("single")}>Single run</button><button className={view === "batch" ? "active" : ""} onClick={() => setView("batch")} disabled={!batchIds.length}>Batch</button></div>
-        {view === "single" && manifest.length > 0 && <ResultPicker value={filename} onChange={setFilename} label="Saved experiment" options={manifest.map((item) => ({ value: item.filename, label: item.label }))} />}
+        {view === "single" && manifest.length > 0 && <ResultPicker value={filename} onChange={setFilename} label="Saved experiment" options={manifest.map((item) => ({ value: item.filename, label: item.label ?? item.filename }))} />}
         {view === "batch" && batchIds.length > 0 && <ResultPicker value={batchId} onChange={setBatchId} label="Saved batch" options={batchIds.map((item) => ({ value: item, label: item }))} />}
         {error && <p className="error">{error}</p>}
         {view === "single" && !run && !error && <p className="loading">Loading experiment…</p>}

@@ -45,7 +45,7 @@ Qiskit Aer matrix-product-state simulator [8]. Sampled worlds are then ranked by
 moves through explore, goal-discrimination, and exploit modes. It plans up to 8 actions ahead with a beam width of
 48, re-planning after each action, and the LLM's proposal receives a weight of 0.35.
 
-In the ARC-AGI-3 experiments, we used the v12 harness for structured world models. At each turn the LLM proposes 6–10
+In the ARC-AGI-3 experiments, we used the v12 structured-world-models harness. At each turn the LLM proposes 6–10
 competing complete hypotheses, each predicting the outcome of every available action. The harness classifies the
 observed outcome and updates hypothesis probabilities. QAHS then selects the ordered three-action plan that best
 separates the remaining hypotheses, executes its first action, and re-plans. Two selectors optimize the identical
@@ -94,7 +94,7 @@ its reasoning counts toward that limit; an earlier 16,000-token limit truncated 
 comparisons.
 
 Three experiments were run: (1) the hidden-rule benchmark with Qwen3:8B and Claude Opus 5.5, all 18 episodes in
-each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–10, a 40-action budget, and the v12 harness;
+each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–10, a 40-action budget, and the v12 structured-world-models harness;
 and (3) the same LP85 configuration with Claude Haiku 5.5 on seeds 6–15, plus Claude Opus 5.5 on seed 6.
 
 ## Results and Discussion
@@ -121,7 +121,7 @@ Qwen and p = 1.0 for Claude in every capability).
 
 **B) ARC-AGI-3 Game LP85**
 
-Table 3 summarizes the LP85 experiments [1] on the v12 harness, with seeds 6–10 and a 40-action budget. Claude Haiku
+Table 3 summarizes the LP85 experiments [1] on the v12 structured-world-models harness, with seeds 6–10 and a 40-action budget. Claude Haiku
 5.5 completed the first level in 9 of 15 episodes, against 3 of 15 for GPT-6 Luna. For Haiku, all three conditions
 completed a level on exactly 3 of 5 seeds. GPT-6 Luna progressed on 1, 0, and 2 seeds in the LLM-only, classical,
 and quantum conditions. A repeated GPT-6 Luna run of seed 8 completed no level in any condition; with that run in
@@ -140,7 +140,7 @@ level in any condition, as did both other models on that seed. No run progressed
 | Claude Opus 5.5 | Classical QAHS | 0 / 1 | 0.000 | — |
 | Claude Opus 5.5 | Quantum QAHS | 0 / 1 | 0.000 | 0.131 |
 
-*Table 3: LP85 results (v12 harness, seeds 6–10, 40 actions; Claude Opus 5.5 on seed 6 only). The SAI proxy
+*Table 3: LP85 results (v12 structured-world-models harness, seeds 6–10, 40 actions; Claude Opus 5.5 on seed 6 only). The SAI proxy
 is computed from the trace of each run; it is reported for the LLM-only and quantum conditions, and fixes T and R at 0.*
 
 Of Haiku's six level completions under QAHS, five directly followed an action in which the selector chose an
@@ -160,7 +160,7 @@ classical, and quantum conditions. Classical QAHS outperformed LLM-only on three
 | 11–15 | 1 / 5 | 3 / 5 | 2 / 5 |
 | All ten | 4 / 10 | 6 / 10 | 5 / 10 |
 
-*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 harness, 40 actions).*
+*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 structured-world-models harness, 40 actions).*
 
 **C) Discussion**
 

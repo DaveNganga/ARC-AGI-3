@@ -35,16 +35,19 @@ const FINAL_FILES = [
   "20261104T035320Z__v12-structured-world-models__v12-final-lp85__lp85__seed-10__actions-40__gpt-6-luna__comparison.json",
 ] as const;
 
-// Claude Haiku 5.5 on the same V12 harness, lp85 seeds 6-10, 40 actions, medium effort.
-// Picked from the run index by batch ID; the first completed run per seed is used, as for GPT seed 8.
-const HAIKU_BATCH = "claude-haiku-v12-final-lp85";
-const HAIKU_MODEL = "claude-haiku-5-5";
+// Claude runs on the same V12 harness, lp85 seeds 6-10, 40 actions, medium effort, picked from the run
+// index by batch ID; the first completed run per seed is used, as for GPT seed 8. Opus has seed 6 only.
 const FINAL_SEEDS = [6, 7, 8, 9, 10];
-const MODELS = [{ id: "gpt", label: "GPT-6 Luna" }, { id: "haiku", label: "Claude Haiku 5.5" }] as const;
+const CLAUDE_SERIES = [
+  { id: "haiku", label: "Claude Haiku 5.5", batch: "claude-haiku-v12-final-lp85", model: "claude-haiku-5-5", missing: "pending" },
+  { id: "opus", label: "Claude Opus 5.5", batch: "claude-v12-final-lp85-64k", model: "claude-opus-5-5", missing: "not run" },
+] as const;
+const MODELS = [{ id: "gpt", label: "GPT-6 Luna", missing: "pending" }, ...CLAUDE_SERIES] as const;
+type ClaudeId = (typeof CLAUDE_SERIES)[number]["id"];
 type ModelId = (typeof MODELS)[number]["id"];
 
-function haikuFiles(manifest: ManifestRow[]) {
-  const rows = manifest.filter((row) => row.batch_id === HAIKU_BATCH && row.model === HAIKU_MODEL && row.game_id === "lp85"
+function seriesFiles(manifest: ManifestRow[], batch: string, model: string) {
+  const rows = manifest.filter((row) => row.batch_id === batch && row.model === model && row.game_id === "lp85"
     && FINAL_SEEDS.includes(Number(row.seed))).sort((left, right) => left.filename.localeCompare(right.filename));
   const first = new Map<number, string>();
   rows.forEach((row) => { if (!first.has(Number(row.seed))) first.set(Number(row.seed), row.filename); });
@@ -167,7 +170,7 @@ function episodeSummary(episode: Episode) {
 
 export default function FinalResults() {
   const [runs, setRuns] = useState<FinalRun[]>([]);
-  const [haikuRuns, setHaikuRuns] = useState<FinalRun[]>([]);
+  const [claudeRuns, setClaudeRuns] = useState<Record<ClaudeId, FinalRun[]>>({ haiku: [], opus: [] });
   const [selectedSeed, setSelectedSeed] = useState(6);
   const [error, setError] = useState("");
 
@@ -177,23 +180,27 @@ export default function FinalResults() {
       .then((run: FinalRun) => ({ ...run, filename }))))
       .then((loaded) => setRuns(loaded.sort((left, right) => left.seed - right.seed)))
       .catch((reason: Error) => setError(reason.message));
-    // Haiku runs are optional: until they exist, their rows read "pending".
+    // Claude runs are optional: seeds without a run read "pending" (Haiku) or "not run" (Opus).
     fetch("/runs/index.json", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
-      .then((manifest: ManifestRow[]) => Promise.all(haikuFiles(manifest).map(loadRun)))
-      .then((loaded) => setHaikuRuns(loaded.sort((left, right) => left.seed - right.seed)))
-      .catch(() => setHaikuRuns([]));
+      .then((manifest: ManifestRow[]) => Promise.all(CLAUDE_SERIES.map(({ batch, model }) =>
+        Promise.all(seriesFiles(manifest, batch, model).map(loadRun)))))
+      .then((loaded) => setClaudeRuns({
+        haiku: loaded[0].sort((left, right) => left.seed - right.seed),
+        opus: loaded[1].sort((left, right) => left.seed - right.seed),
+      }))
+      .catch(() => setClaudeRuns({ haiku: [], opus: [] }));
   }, []);
 
-  const runsByModel = useMemo(() => ({ gpt: runs, haiku: haikuRuns }) as Record<ModelId, FinalRun[]>, [runs, haikuRuns]);
+  const runsByModel = useMemo(() => ({ gpt: runs, ...claudeRuns }) as Record<ModelId, FinalRun[]>, [runs, claudeRuns]);
   const aggregate = useMemo(() => MODES.map(({ name }, index) => ({
     name,
-    byModel: MODELS.map(({ id, label }) => ({ label, row: aggregateFor(runsByModel[id])[index], seeds: runsByModel[id].length })),
+    byModel: MODELS.map(({ id, label, missing }) => ({ label, missing, row: aggregateFor(runsByModel[id])[index], seeds: runsByModel[id].length })),
   })), [runsByModel]);
-  const capability = useMemo(() => MODELS.flatMap(({ id, label }) => capabilityFor(runsByModel[id]).map((row) => ({ ...row, model: label }))), [runsByModel]);
+  const capability = useMemo(() => MODELS.flatMap(({ id, label, missing }) => capabilityFor(runsByModel[id]).map((row) => ({ ...row, model: label, missing }))), [runsByModel]);
 
   const selected = runs.find((run) => run.seed === selectedSeed) ?? runs[0];
-  const selectedHaiku = haikuRuns.find((run) => run.seed === selected?.seed);
+  const selectedClaude = CLAUDE_SERIES.map((series) => ({ ...series, run: claudeRuns[series.id].find((run) => run.seed === selected?.seed) }));
   const directOverride = useMemo(() => runs.flatMap((run) => turns(run.with_qahs).map((turn) => ({ run, turn })))
     .find(({ turn }) => Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0)
       && turn.search_diagnostics?.quantum_used
@@ -217,13 +224,13 @@ export default function FinalResults() {
       <h2>Progress favored the quantum condition</h2>
       <div className="final-table with-model" role="table" aria-label="Aggregate final evaluation">
         <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Model</span><span>Progressing seeds</span><span>Levels</span><span>Actions</span><span>Levels / 100 actions</span><span>Model calls</span></div>
-        {aggregate.flatMap(({ name, byModel }) => byModel.map(({ label, row, seeds }) => <div className={`final-table-row mode-${name.toLowerCase()}`} role="row" key={`${name}-${label}`}>
+        {aggregate.flatMap(({ name, byModel }) => byModel.map(({ label, missing, row, seeds }) => <div className={`final-table-row mode-${name.toLowerCase()}`} role="row" key={`${name}-${label}`}>
           <strong>{name}</strong><span>{label}</span>
           {seeds ? <><span>{row.progressed}/{seeds}</span><span>{row.levels}</span><span>{row.actions}</span><span>{row.efficiency.toFixed(3)}</span><span>{row.calls}</span></>
-            : <><span>pending</span><span>—</span><span>—</span><span>—</span><span>—</span></>}
+            : <><span>{missing}</span><span>—</span><span>—</span><span>—</span><span>—</span></>}
         </div>))}
       </div>
-      <p className="final-method">Claude Haiku 5.5 rows: batch {HAIKU_BATCH}, the same V12 harness, lp85 seeds 6–10, 40-action budget and medium effort as GPT-6 Luna; {haikuRuns.length}/5 seeds loaded.</p>
+      <p className="final-method">Claude rows use the same V12 harness, lp85 seeds, 40-action budget and medium effort as GPT-6 Luna. Claude Haiku 5.5: batch {CLAUDE_SERIES[0].batch}, {claudeRuns.haiku.length}/5 seeds. Claude Opus 5.5: batch {CLAUDE_SERIES[1].batch}, seed 6 only ({claudeRuns.opus.length}/5 seeds), so its totals are not comparable with five-seed totals.</p>
       {directOverride && <div className="final-key-event"><small>Direct QAOA result · seed {directOverride.run.seed}, action {directOverride.turn.turn}</small><strong>Luna proposed {directOverride.turn.proposal?.recommended_candidate_id ?? "another action"}; QAOA selected {directOverride.turn.selected_candidate.candidate_id}; the game reported progress.</strong></div>}
     </section>
 
@@ -232,7 +239,7 @@ export default function FinalResults() {
       <h2>Run-level scores aggregated across the five seeds</h2>
       <div className="final-table capability-final-table with-model" role="table" aria-label="Aggregate capability proxy scores">
         <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Model</span><span>G</span><span>A</span><span>Au</span><span>T</span><span>R</span><span>SAI proxy</span></div>
-        {capability.map((row) => <div className="final-table-row" role="row" key={`${row.model}-${row.name}`}><strong>{row.name}</strong><span>{row.model}</span>{row.seeds ? row.scores.map((score, index) => <span key={index}>{score.toFixed(3)}</span>) : [0, 1, 2, 3, 4, 5].map((index) => <span key={index}>{index ? "—" : "pending"}</span>)}</div>)}
+        {capability.map((row) => <div className="final-table-row" role="row" key={`${row.model}-${row.name}`}><strong>{row.name}</strong><span>{row.model}</span>{row.seeds ? row.scores.map((score, index) => <span key={index}>{score.toFixed(3)}</span>) : [0, 1, 2, 3, 4, 5].map((index) => <span key={index}>{index ? "—" : row.missing}</span>)}</div>)}
       </div>
     </section>
 
@@ -242,15 +249,15 @@ export default function FinalResults() {
         <p className="final-method">Condition order: {(selected.condition_order ?? []).map((item) => item.replace("qahs_qaoa", "Quantum").replace("qahs_classical", "Classical").replace("llm_only", "LLM")).join(" → ")}. Seed 8 is locked to its first completed run.</p>
         <div className="final-table seed-table with-model" role="table" aria-label={`Seed ${selected.seed} details`}>
           <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Model</span><span>Levels</span><span>First progress</span><span>Actions</span><span>Final state</span><span>Model calls</span><span>QAOA turns</span></div>
-          {MODES.flatMap(({ name, key }) => MODELS.map(({ id, label }) => {
-            const run = id === "gpt" ? selected : selectedHaiku;
-            if (!run) return <div className="final-table-row" role="row" key={`${name}-${id}`}><strong>{name}</strong><span>{label}</span><span>pending</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>;
+          {MODES.flatMap(({ name, key }) => MODELS.map(({ id, label, missing }) => {
+            const run = id === "gpt" ? selected : selectedClaude.find((series) => series.id === id)?.run;
+            if (!run) return <div className="final-table-row" role="row" key={`${name}-${id}`}><strong>{name}</strong><span>{label}</span><span>{missing}</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>;
             const summary = episodeSummary(run[key]);
             return <div className="final-table-row" role="row" key={`${name}-${id}`}><strong>{name}</strong><span>{label}</span><span>{summary.levels}</span><span>{summary.firstProgress ? `Action ${summary.firstProgress}` : "—"}</span><span>{summary.actions}</span><span>{summary.finalState.replace("_", " ")}</span><span>{summary.calls}</span><span>{summary.qaoaTurns || "—"}</span></div>;
           }))}
         </div>
         <Link className="final-detail-link" href={`/results?run=${encodeURIComponent(selected.filename)}`}>Open this run’s full hypotheses, actions, and state changes <span aria-hidden="true">→</span></Link>
-        {selectedHaiku && <Link className="final-detail-link" href={`/results?run=${encodeURIComponent(selectedHaiku.filename)}`}>Open the Claude Haiku 5.5 run for seed {selectedHaiku.seed} <span aria-hidden="true">→</span></Link>}
+        {selectedClaude.map(({ id, label, run }) => run && <Link className="final-detail-link" key={id} href={`/results?run=${encodeURIComponent(run.filename)}`}>Open the {label} run for seed {run.seed} <span aria-hidden="true">→</span></Link>)}
       </>}
     </section>
   </main>;

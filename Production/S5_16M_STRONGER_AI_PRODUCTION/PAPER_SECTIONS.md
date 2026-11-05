@@ -94,7 +94,7 @@ comparisons.
 
 Three experiments were run: (1) the hidden-rule benchmark with Qwen3:8B and Claude Opus 5.5, all 18 episodes in
 each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–10, a 40-action budget, and the v12 harness;
-and (3) the same LP85 configuration with Claude Haiku 5.5, plus Claude Opus 5.5 on seed 6.
+and (3) the same LP85 configuration with Claude Haiku 5.5 on seeds 6–15, plus Claude Opus 5.5 on seed 6.
 
 ## Results and Discussion
 
@@ -147,17 +147,32 @@ alternative to the model's recommended action: three under classical QAHS and tw
 Luna, one of its two quantum completions followed such an override. Because classical selection produced the same
 pattern, these transitions show the value of hypothesis-driven selection in general, not of QAOA specifically.
 
+To enlarge the Haiku sample, seeds 11–15 were also run with the same configuration (GPT-6 Luna was not run on these
+seeds). Table 4 reports both sets. Over all ten seeds, Haiku completed a level on 4, 6, and 5 seeds in the LLM-only,
+classical, and quantum conditions. Classical QAHS outperformed LLM-only on three seeds and underperformed it on one
+(paired exact sign test, p = 0.625); quantum QAHS outperformed LLM-only on two seeds and underperformed it on one
+(p = 1.0); and classical outperformed quantum on one seed, with no seed favoring quantum (p = 1.0).
+
+| Seeds | LLM-only | Classical QAHS | Quantum QAHS |
+|---|---|---|---|
+| 6–10 | 3 / 5 | 3 / 5 | 3 / 5 |
+| 11–15 | 1 / 5 | 3 / 5 | 2 / 5 |
+| All ten | 4 / 10 | 6 / 10 | 5 / 10 |
+
+*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 harness, 40 actions).*
+
 **C) Discussion**
 
 Across both environments, the model had a larger effect than the selection method. On LP85, Haiku outperformed
-GPT-6 Luna in every condition, while its three conditions tied. On the hidden-rule benchmark, QAHS helped the smaller
+GPT-6 Luna in every condition on the matched seeds 6–10, where its three conditions tied; over ten seeds, classical
+QAHS led Haiku's LLM-only condition by a margin that was not statistically significant. On the hidden-rule benchmark, QAHS helped the smaller
 model and hindered the larger one, but each change rests on one to three episodes. Quantum and classical QAHS
 performed comparably, as expected. Both optimize the same objective over the same candidates, and the classical
 selector is exact, so QAOA [7] can match it but cannot exceed it except through sampling randomness. The present
 results therefore do not demonstrate a quantum advantage. They indicate that structured hypothesis selection can
 change agent behavior: it produced longer episodes and progress after overriding the model's preferred action.
-Whether these changes improve performance reliably requires larger samples, additional games, and a classical
-control with randomized tie-breaking.
+Whether these changes improve performance reliably requires larger samples (roughly 30 seeds for a gap of the
+size observed on Haiku), additional games, and a classical control with randomized tie-breaking.
 
 ## Abstract edits
 

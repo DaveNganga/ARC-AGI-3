@@ -136,3 +136,4 @@ details { border-top: 1px solid #27313b; padding: 14px 0; } details > summary { 
 .counterfactual-controls button { min-height: 2.7rem; }
 @media (max-width: 800px) { .counterfactual-controls { grid-template-columns: 1fr; } }
 .composition-note { padding: .7rem .85rem; border-left: 3px solid #36b3a7; background: rgba(54,179,167,.08); }
+.final-table-total { background: #111a22; }.final-table-total span { color: white; font-weight: 600; }

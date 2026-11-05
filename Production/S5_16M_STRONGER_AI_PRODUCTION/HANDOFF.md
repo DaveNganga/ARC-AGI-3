@@ -79,6 +79,29 @@ for Haiku, 0.183 / 0.218 for GPT-6 Luna, and 0.137 / 0.131 for Opus (seed 6 only
 - **GPT's "Quantum wins" edge (2 vs 1 seeds) does not carry over to Haiku** and is within noise at 5 seeds.
 - **Limits:** one game, 5 seeds, lp85 was the development game, and no model got past level 1 of 8.
 
+### Extended Haiku sample: seeds 6-15
+
+With five more seeds (batch `claude-haiku-v12-lp85-s11-15`, same setup, about $3.08, no failed calls), classical
+QAHS leads Haiku's LLM-only condition 6 to 4 seeds, but the gap is not significant. GPT-6 Luna has no runs on
+seeds 11-15, so these seeds extend the Haiku sample only.
+
+| Seed | Haiku LLM | Haiku Classical | Haiku Quantum |
+|---|---|---|---|
+| 11 | 0 / 17 lost | 1 / 40 | 0 / 24 lost |
+| 12 | 0 / 20 lost | 1 / 40 | 1 / 40 |
+| 13 | 0 / 24 lost | 0 / 22 lost | 0 / 40 |
+| 14 | 0 / 18 lost | 0 / 21 lost | 0 / 21 lost |
+| 15 | 1 / 40 | 1 / 40 | 1 / 40 |
+| **Seeds 6-10** | **3 / 5** | **3 / 5** | **3 / 5** |
+| **Seeds 11-15** | **1 / 5** | **3 / 5** | **2 / 5** |
+| **All 10 seeds** | **4 / 10** | **6 / 10** | **5 / 10** |
+
+- **Classical vs LLM-only:** classical won on 3 seeds (10, 11, 12) and lost on 1 (9); paired sign test p = 0.625.
+- **Quantum vs LLM-only:** won 2, lost 1; p = 1.0.
+- **Quantum vs classical:** classical won 1 (seed 11), quantum none; p = 1.0, as expected since classical search is exact.
+- Seeds 6-10 tied three ways; seeds 11-15 tilt toward QAHS. Roughly 30 seeds would be needed for a gap of this size
+  to reach significance.
+
 ## Caveats to put in the paper
 
 1. **Tiny samples:** 3–5 episodes per domain, one model run each. One solve changes G by 0.2.

@@ -85,6 +85,26 @@ class ExportTests(unittest.TestCase):
             published = json.loads((target / "20260102T000000Z_ar25_comparison.json").read_text())
             self.assertNotIn("secret", published["error"])
 
+    def test_export_repairs_filename_only_manifest_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, target = Path(tmp) / "src", Path(tmp) / "runs"
+            source.mkdir()
+            target.mkdir()
+            filename = "20260102T000000Z__v12__batch-a__lp85__seed-11__actions-40__gpt-6-luna__comparison.json"
+            payload = {
+                "game_id": "lp85", "seed": 11, "action_budget": 40,
+                "model": "gpt-6-luna", "batch_id": "batch-a", "harness_version": "v12",
+            }
+            (source / filename).write_text(json.dumps(payload))
+            (target / filename).write_text(json.dumps(payload))
+            (target / "index.json").write_text(json.dumps([{"filename": filename}]))
+
+            self.assertEqual(export.export_runs(source, target), 1)
+            row = json.loads((target / "index.json").read_text())[0]
+            self.assertEqual(row["batch_id"], "batch-a")
+            self.assertEqual(row["seed"], 11)
+            self.assertEqual(row["model"], "gpt-6-luna")
+
     def test_clean_redacts_error_details(self):
         cleaned = export.clean({"error": "KeyError: x", "error_traceback": "Traceback ...", "stop_reason": "error"})
         self.assertNotIn("KeyError", cleaned["error"])

@@ -68,7 +68,10 @@ def export_runs(source_dir: Path = SOURCE, target_dir: Path = TARGET, full: bool
     for source in sources:
         destination = target_dir / source.name
         cached = previous.get(source.name)
-        if (not full and cached and destination.exists() and
+        cache_is_complete = cached and {
+            "label", "game_id", "seed", "model", "batch_id"
+        }.issubset(cached)
+        if (not full and cache_is_complete and destination.exists() and
                 destination.stat().st_mtime_ns >= source.stat().st_mtime_ns):
             manifest.append(cached)
             continue

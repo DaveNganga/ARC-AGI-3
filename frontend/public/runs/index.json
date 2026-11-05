@@ -1,90 +1,380 @@
 [
   {
-    "filename": "20261105T212812Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-16__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T212812Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-16__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 16 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 16,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T202119Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-15__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T202119Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-15__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 15 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 15,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T190754Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-14__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T190754Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-14__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 14 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 14,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T174747Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-13__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T174747Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-13__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 13 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 13,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T164339Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-12__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T164339Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-12__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 12 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 12,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T151607Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-11__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T151607Z__v12-structured-world-models__v12-final2-lp85-retry__lp85__seed-11__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 11 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85-retry",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 11,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85-retry"
   },
   {
-    "filename": "20261105T045527Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-16__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045527Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-16__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 16 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 16,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261105T045523Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-15__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045523Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-15__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 15 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 15,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261105T045519Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-14__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045519Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-14__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 14 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 14,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261105T045515Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-13__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045515Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-13__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 13 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 13,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261105T045510Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-12__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045510Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-12__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 12 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 12,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261105T045505Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-11__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261105T045505Z__v12-structured-world-models__v12-final2-lp85__lp85__seed-11__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 11 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final2-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 11,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final2-lp85"
   },
   {
-    "filename": "20261104T035320Z__v12-structured-world-models__v12-final-lp85__lp85__seed-10__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261104T035320Z__v12-structured-world-models__v12-final-lp85__lp85__seed-10__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 10 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 10,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261104T022151Z__v12-structured-world-models__v12-final-lp85__lp85__seed-09__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261104T022151Z__v12-structured-world-models__v12-final-lp85__lp85__seed-09__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 9 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 9,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261104T002518Z__v12-structured-world-models__v12-final-lp85__lp85__seed-08__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261104T002518Z__v12-structured-world-models__v12-final-lp85__lp85__seed-08__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 8 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 8,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261103T231803Z__v12-structured-world-models__v12-final-lp85__lp85__seed-08__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261103T231803Z__v12-structured-world-models__v12-final-lp85__lp85__seed-08__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 8 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 8,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261103T205521Z__v12-structured-world-models__v12-final-lp85__lp85__seed-07__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261103T205521Z__v12-structured-world-models__v12-final-lp85__lp85__seed-07__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 7 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 7,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261103T195204Z__v12-structured-world-models__v12-final-lp85__lp85__seed-06__actions-40__gpt-6-luna__comparison.json"
+    "filename": "20261103T195204Z__v12-structured-world-models__v12-final-lp85__lp85__seed-06__actions-40__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 6 \u00b7 Luna \u00b7 40 actions \u00b7 v12-final-lp85",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 6,
+    "action_budget": 40,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "v12-final-lp85"
   },
   {
-    "filename": "20261103T181258Z__v12-structured-world-models__yet-another-smoke-test__lp85__seed-00__actions-20__gpt-6-luna__comparison.json"
+    "filename": "20261103T181258Z__v12-structured-world-models__yet-another-smoke-test__lp85__seed-00__actions-20__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 0 \u00b7 Luna \u00b7 20 actions \u00b7 yet-another-smoke-test",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 0,
+    "action_budget": 20,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+matched-comparison-audit-v7",
+    "batch_id": "yet-another-smoke-test"
   },
   {
-    "filename": "20261103T162721Z__v12-structured-world-models__v12-moretests__lp85__seed-04__actions-16__gpt-6-luna__comparison.json"
+    "filename": "20261103T162721Z__v12-structured-world-models__v12-moretests__lp85__seed-04__actions-16__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 4 \u00b7 Luna \u00b7 16 actions \u00b7 v12-moretests",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 4,
+    "action_budget": 16,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+compatible-outcomes-v6",
+    "batch_id": "v12-moretests"
   },
   {
-    "filename": "20261103T155832Z__v12-structured-world-models__v12-moretests__lp85__seed-04__actions-12__gpt-6-luna__comparison.json"
+    "filename": "20261103T155832Z__v12-structured-world-models__v12-moretests__lp85__seed-04__actions-12__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 4 \u00b7 Luna \u00b7 12 actions \u00b7 v12-moretests",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 4,
+    "action_budget": 12,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+compatible-outcomes-v6",
+    "batch_id": "v12-moretests"
   },
   {
-    "filename": "20261103T152229Z__v12-structured-world-models__v12-moretests__lp85__seed-03__actions-12__gpt-6-luna__comparison.json"
+    "filename": "20261103T152229Z__v12-structured-world-models__v12-moretests__lp85__seed-03__actions-12__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 3 \u00b7 Luna \u00b7 12 actions \u00b7 v12-moretests",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 3,
+    "action_budget": 12,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+compatible-outcomes-v6",
+    "batch_id": "v12-moretests"
   },
   {
-    "filename": "20261103T145243Z__v12-structured-world-models__batch-01__lp85__seed-01__actions-12__gpt-6-luna__comparison.json"
+    "filename": "20261103T145243Z__v12-structured-world-models__batch-01__lp85__seed-01__actions-12__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 1 \u00b7 Luna \u00b7 12 actions \u00b7 batch-01",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 1,
+    "action_budget": 12,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+compatible-outcomes-v6",
+    "batch_id": "batch-01"
   },
   {
-    "filename": "20261103T053222Z__v12-structured-world-models__v12-group-transform-smoke__lp85__seed-01__actions-17__gpt-6-luna__comparison.json"
+    "filename": "20261103T053222Z__v12-structured-world-models__v12-group-transform-smoke__lp85__seed-01__actions-17__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 1 \u00b7 Luna \u00b7 17 actions \u00b7 v12-group-transform-smoke",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 1,
+    "action_budget": 17,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+compatible-outcomes-v6",
+    "batch_id": "v12-group-transform-smoke"
   },
   {
-    "filename": "20261103T042807Z__v12-structured-world-models__v12-relational-s1-a20__lp85__seed-02__actions-20__gpt-6-luna__comparison.json"
+    "filename": "20261103T042807Z__v12-structured-world-models__v12-relational-s1-a20__lp85__seed-02__actions-20__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 2 \u00b7 Luna \u00b7 20 actions \u00b7 v12-relational-s1-a20",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 2,
+    "action_budget": 20,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+relational-effects-v5",
+    "batch_id": "v12-relational-s1-a20"
   },
   {
-    "filename": "20261103T040233Z__v12-structured-world-models__v12-relational-s1-a20__lp85__seed-01__actions-20__gpt-6-luna__comparison.json"
+    "filename": "20261103T040233Z__v12-structured-world-models__v12-relational-s1-a20__lp85__seed-01__actions-20__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 1 \u00b7 Luna \u00b7 20 actions \u00b7 v12-relational-s1-a20",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 1,
+    "action_budget": 20,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+relational-effects-v5",
+    "batch_id": "v12-relational-s1-a20"
   },
   {
-    "filename": "20261103T035151Z__v12-structured-world-models__v12-structured-world-models-smok__lp85__seed-00__actions-10__gpt-6-luna__comparison.json"
+    "filename": "20261103T035151Z__v12-structured-world-models__v12-structured-world-models-smok__lp85__seed-00__actions-10__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 0 \u00b7 Luna \u00b7 10 actions \u00b7 v12-structured-world-models-smok",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 0,
+    "action_budget": 10,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+observable-goal-predicates+relational-effects-v5",
+    "batch_id": "v12-structured-world-models-smok"
   },
   {
-    "filename": "20261103T031350Z__v11-information-gain-search__lp85-smokev12__lp85__seed-00__actions-10__gpt-6-luna__comparison.json"
+    "filename": "20261103T031350Z__v11-information-gain-search__lp85-smokev12__lp85__seed-00__actions-10__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 0 \u00b7 Luna \u00b7 10 actions \u00b7 lp85-smokev12-",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 0,
+    "action_budget": 10,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v11-information-gain-search",
+    "input_representation": "stable-interactive-entities+lossless-grid+validated-persistence-v4",
+    "batch_id": "lp85-smokev12-"
   },
   {
-    "filename": "20261103T023703Z__v12-structured-world-models__v12-evidence-channels-smoke__lp85__seed-00__actions-10__gpt-6-luna__comparison.json"
+    "filename": "20261103T023703Z__v12-structured-world-models__v12-evidence-channels-smoke__lp85__seed-00__actions-10__gpt-6-luna__comparison.json",
+    "label": "lp85 \u00b7 seed 0 \u00b7 Luna \u00b7 10 actions \u00b7 v12-evidence-channels-smoke",
+    "benchmark": "arc_agi_3",
+    "game_id": "lp85",
+    "seed": 0,
+    "action_budget": 10,
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "harness_version": "v12-structured-world-models",
+    "input_representation": "factorized-evidence-channels+explicit-goal-lineage+observable-discrimination-v3",
+    "batch_id": "v12-evidence-channels-smoke"
   },
   {
     "filename": "20261103T004713Z__v12-structured-world-models__v12-lineage-smoke__lp85__seed-00__actions-10__gpt-6-luna__comparison.json",

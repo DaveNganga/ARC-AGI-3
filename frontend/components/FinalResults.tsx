@@ -60,10 +60,25 @@ function ModelToggle({ selected, onSelect }: { selected: PrimaryModelId; onSelec
 }
 
 function seriesFiles(manifest: ManifestRow[], batch: string, model: string, seeds: readonly number[] = FINAL_SEEDS) {
-  const rows = manifest.filter((row) => row.batch_id === batch && row.model === model && row.game_id === "lp85"
-    && seeds.includes(Number(row.seed))).sort((left, right) => left.filename.localeCompare(right.filename));
+  const metadata = (row: ManifestRow) => {
+    const parts = row.filename.split("__");
+    return {
+      batch: row.batch_id ?? parts[2],
+      game: row.game_id ?? parts[3],
+      seed: row.seed ?? Number(parts[4]?.replace("seed-", "")),
+      model: row.model ?? parts[6],
+    };
+  };
+  const rows = manifest.filter((row) => {
+    const parsed = metadata(row);
+    return parsed.batch === batch && parsed.model === model && parsed.game === "lp85"
+      && seeds.includes(Number(parsed.seed));
+  }).sort((left, right) => left.filename.localeCompare(right.filename));
   const first = new Map<number, string>();
-  rows.forEach((row) => { if (!first.has(Number(row.seed))) first.set(Number(row.seed), row.filename); });
+  rows.forEach((row) => {
+    const seed = Number(metadata(row).seed);
+    if (!first.has(seed)) first.set(seed, row.filename);
+  });
   return Array.from(first.values());
 }
 

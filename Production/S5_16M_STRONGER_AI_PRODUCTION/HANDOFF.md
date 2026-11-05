@@ -44,7 +44,7 @@ see `METRIC_CALCULATIONS.md`. Run `python metric_calculations.py LABEL=report.js
 - **R** = min(1, perturbed solve rate / clean solve rate); 0 if no clean world was solved.
 - **SAI** = (G + A + Au + T + R) / 5.
 
-## ARC-AGI-3: Claude Haiku vs GPT on Dave's v12 final test
+## ARC-AGI-3: Claude Haiku, Claude Opus and GPT on Dave's v12 final test
 
 Haiku completed a level on 3 of 5 seeds in every condition; GPT-6 Luna did so on 1, 0 and 2 seeds.
 Same harness code as Dave's `main`, game lp85, seeds 6-10, 40-action budget, medium effort; batch
@@ -62,6 +62,17 @@ Each cell is levels completed / actions; "lost" means game over before 40 action
 | **Seeds with a level** | **3 / 5** | **3 / 5** | **3 / 5** | **1 / 5** | **0 / 5** | **2 / 5** |
 
 GPT seed 8 is the run Dave's `/final` page uses; his rerun of seed 8 completed no level in any condition.
+
+Claude Opus 5.5 was run on seed 6 only (batch `claude-v12-final-lp85-64k`, about $22) before the API
+credit ran out; like Haiku and GPT, it completed no level on that seed.
+
+| Seed 6 | LLM | Classical | Quantum |
+|---|---|---|---|
+| Claude Opus 5.5 | 0 / 21 lost | 0 / 31 lost | 0 / 27 lost |
+| Claude Opus 5.5, 16k output limit (excluded) | 1 / 11, ended by a truncated response | 0 / 25, ended by a truncated response | 0 / 25 lost |
+
+On Dave's `/final` SAI proxy (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS score 0.270 / 0.260
+for Haiku, 0.183 / 0.218 for GPT-6 Luna, and 0.137 / 0.131 for Opus (seed 6 only).
 
 - **Model, not QAHS, made the difference.** Haiku's three conditions tie at 3 of 5.
 - **Quantum tied classical (3 vs 3),** as expected: both optimize the same objective and classical is exact.

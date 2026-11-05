@@ -44,6 +44,30 @@ see `METRIC_CALCULATIONS.md`. Run `python metric_calculations.py LABEL=report.js
 - **R** = min(1, perturbed solve rate / clean solve rate); 0 if no clean world was solved.
 - **SAI** = (G + A + Au + T + R) / 5.
 
+## ARC-AGI-3: Claude Haiku vs GPT on Dave's v12 final test
+
+Haiku completed a level on 3 of 5 seeds in every condition; GPT-6 Luna did so on 1, 0 and 2 seeds.
+Same harness code as Dave's `main`, game lp85, seeds 6-10, 40-action budget, medium effort; batch
+`claude-haiku-v12-final-lp85`. All 15 Haiku episodes ran without a failed call, for about $4.16.
+
+Each cell is levels completed / actions; "lost" means game over before 40 actions.
+
+| Seed | Haiku LLM | Haiku Classical | Haiku Quantum | GPT LLM | GPT Classical | GPT Quantum |
+|---|---|---|---|---|---|---|
+| 6 | 0 / 24 lost | 0 / 23 lost | 0 / 31 lost | 0 / 21 lost | 0 / 37 lost | 0 / 36 lost |
+| 7 | 1 / 40 | 1 / 40 | 1 / 40 | 0 / 23 lost | 0 / 34 lost | 0 / 33 lost |
+| 8 | 1 / 40 | 1 / 40 | 1 / 40 | 1 / 40 | 0 / 37 lost | 1 / 40 |
+| 9 | 1 / 40 | 0 / 40 lost | 0 / 33 lost | 0 / 24 lost | 0 / 40 | 1 / 40 |
+| 10 | 0 / 23 lost | 1 / 40 | 1 / 40 | 0 / 20 lost | 0 / 34 lost | 0 / 32 lost |
+| **Seeds with a level** | **3 / 5** | **3 / 5** | **3 / 5** | **1 / 5** | **0 / 5** | **2 / 5** |
+
+GPT seed 8 is the run Dave's `/final` page uses; his rerun of seed 8 completed no level in any condition.
+
+- **Model, not QAHS, made the difference.** Haiku's three conditions tie at 3 of 5.
+- **Quantum tied classical (3 vs 3),** as expected: both optimize the same objective and classical is exact.
+- **GPT's "Quantum wins" edge (2 vs 1 seeds) does not carry over to Haiku** and is within noise at 5 seeds.
+- **Limits:** one game, 5 seeds, lp85 was the development game, and no model got past level 1 of 8.
+
 ## Caveats to put in the paper
 
 1. **Tiny samples:** 3–5 episodes per domain, one model run each. One solve changes G by 0.2.

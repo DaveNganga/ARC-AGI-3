@@ -47,7 +47,10 @@ type ClaudeId = (typeof CLAUDE_SERIES)[number]["id"];
 type ModelId = (typeof MODELS)[number]["id"];
 
 // Extra Haiku seeds with no matching GPT runs, shown in their own section.
-const HAIKU_EXTENDED = { batch: "claude-haiku-v12-lp85-s11-15", model: "claude-haiku-5-5", seeds: [11, 12, 13, 14, 15] };
+const HAIKU_EXTENDED = [
+  { batch: "claude-haiku-v12-lp85-s11-15", model: "claude-haiku-5-5", seeds: [11, 12, 13, 14, 15] },
+  { batch: "claude-haiku-v12-lp85-s16plus", model: "claude-haiku-5-5", seeds: Array.from({ length: 20 }, (_, index) => 16 + index) },
+];
 
 function seriesFiles(manifest: ManifestRow[], batch: string, model: string, seeds: number[] = FINAL_SEEDS) {
   const rows = manifest.filter((row) => row.batch_id === batch && row.model === model && row.game_id === "lp85"
@@ -196,7 +199,7 @@ export default function FinalResults() {
       .catch(() => setClaudeRuns({ haiku: [], opus: [] }));
     fetch("/runs/index.json", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
-      .then((manifest: ManifestRow[]) => Promise.all(seriesFiles(manifest, HAIKU_EXTENDED.batch, HAIKU_EXTENDED.model, HAIKU_EXTENDED.seeds).map(loadRun)))
+      .then((manifest: ManifestRow[]) => Promise.all(HAIKU_EXTENDED.flatMap(({ batch, model, seeds }) => seriesFiles(manifest, batch, model, seeds)).map(loadRun)))
       .then((loaded) => setHaikuExtended(loaded.sort((left, right) => left.seed - right.seed)))
       .catch(() => setHaikuExtended([]));
   }, []);
@@ -211,8 +214,9 @@ export default function FinalResults() {
   const extendedRuns = useMemo(() => [...claudeRuns.haiku, ...haikuExtended].sort((left, right) => left.seed - right.seed), [claudeRuns.haiku, haikuExtended]);
   const extendedTotals = useMemo(() => [
     { label: "Seeds 6–10", runs: claudeRuns.haiku },
-    { label: "Seeds 11–15", runs: haikuExtended },
-    { label: "All seeds", runs: extendedRuns },
+    { label: "Seeds 11–15", runs: haikuExtended.filter((run) => run.seed <= 15) },
+    { label: `Seeds 16–${Math.max(16, ...haikuExtended.map((run) => run.seed))}`, runs: haikuExtended.filter((run) => run.seed >= 16) },
+    { label: `All ${extendedRuns.length} seeds`, runs: extendedRuns },
   ].map(({ label, runs: group }) => ({ label, seeds: group.length, progressed: MODES.map(({ key }) => group.filter((run) => levels(run[key]) > 0).length) })), [claudeRuns.haiku, haikuExtended, extendedRuns]);
 
   const selected = runs.find((run) => run.seed === selectedSeed) ?? runs[0];
@@ -262,10 +266,10 @@ export default function FinalResults() {
     {haikuExtended.length > 0 && <section className="final-section">
       <p className="section-number">Extended Claude Haiku 5.5 sample</p>
       <h2>Claude Haiku 5.5 across seeds 6–{Math.max(...extendedRuns.map((run) => run.seed))}</h2>
-      <p className="final-method">Seeds 11–15 use batch {HAIKU_EXTENDED.batch} with the same V12 harness, 40-action budget and medium effort. GPT-6 Luna was not run on these seeds, so they extend the Haiku sample only. Each cell is levels completed / actions taken; “lost” means the game ended before the action budget.</p>
+      <p className="final-method">Seeds 11–15 and 16 onward use batches {HAIKU_EXTENDED.map((series) => series.batch).join(" and ")} with the same V12 harness, 40-action budget and medium effort. GPT-6 Luna was not run on these seeds, so they extend the Haiku sample only. Each cell is levels completed / actions taken; “lost” means the game ended before the action budget.</p>
       <div className="final-table with-model extended-table" role="table" aria-label="Extended Claude Haiku 5.5 seeds">
         <div className="final-table-row final-table-head" role="row"><span>Seed</span><span>Batch</span>{MODES.map(({ name }) => <span key={name}>{name}</span>)}<span></span><span></span></div>
-        {extendedRuns.map((run) => <div className="final-table-row" role="row" key={run.filename}><strong>Seed {run.seed}</strong><span>{run.seed <= 10 ? "final (6–10)" : "extended (11–15)"}</span>
+        {extendedRuns.map((run) => <div className="final-table-row" role="row" key={run.filename}><strong>Seed {run.seed}</strong><span>{run.seed <= 10 ? "final (6–10)" : run.seed <= 15 ? "extended (11–15)" : "extended (16+)"}</span>
           {MODES.map(({ key }) => { const summary = episodeSummary(run[key]); return <span key={key}>{summary.levels} / {summary.actions}{summary.finalState === "GAME_OVER" ? " lost" : ""}</span>; })}<span></span><span></span></div>)}
         {extendedTotals.map((row) => <div className="final-table-row final-table-total" role="row" key={row.label}><strong>{row.label}</strong><span>seeds with a level</span>
           {row.progressed.map((count, index) => <span key={index}>{count}/{row.seeds}</span>)}<span></span><span></span></div>)}

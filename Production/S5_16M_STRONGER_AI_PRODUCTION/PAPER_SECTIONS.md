@@ -33,7 +33,8 @@ rather than running a separate set of tests.
 
 QAHS divides the work between a language model and a search module. At each turn the LLM receives the current
 observation and recent evidence. It proposes an action together with candidate rules or hypotheses. QAHS then
-maintains a probability distribution over the hypothesis space and selects the action used.
+maintains a probability distribution over the hypothesis space and selects the action used. The QAHS implementation was developed with the AI-assisted
+development and assurance workflow of Hartwell et al. [12].
 
 In the hidden-rule benchmark, QAHS maintains a factorized Bayesian posterior over the six rule families, with 384
 joint particles for interactions between families. Candidate worlds are sampled by the Quantum Approximate
@@ -93,7 +94,7 @@ its reasoning counts toward that limit; an earlier 16,000-token limit truncated 
 comparisons.
 
 Three experiments were run: (1) the hidden-rule benchmark with Qwen3:8B and Claude Opus 5.5, all 18 episodes in
-each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–10, a 40-action budget, and the v12 harness;
+each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–10, a 40-action budget, and the v12 structured-world-models harness;
 and (3) the same LP85 configuration with Claude Haiku 5.5 on seeds 6–31, plus Claude Opus 5.5 on seed 6.
 
 ## Results and Discussion
@@ -120,7 +121,7 @@ Qwen and p = 1.0 for Claude in every capability).
 
 **B) ARC-AGI-3 Game LP85**
 
-Table 3 summarizes the LP85 experiments [1] on the v12 harness, with seeds 6–10 and a 40-action budget. Claude Haiku
+Table 3 summarizes the LP85 experiments [1] on the v12 structured-world-models harness, with seeds 6–10 and a 40-action budget. Claude Haiku
 5.5 completed the first level in 9 of 15 episodes, against 3 of 15 for GPT-6 Luna. For Haiku, all three conditions
 completed a level on exactly 3 of 5 seeds. GPT-6 Luna progressed on 1, 0, and 2 seeds in the LLM-only, classical,
 and quantum conditions. A repeated GPT-6 Luna run of seed 8 completed no level in any condition; with that run in
@@ -139,8 +140,8 @@ level in any condition, as did both other models on that seed. No run progressed
 | Claude Opus 5.5 | Classical QAHS | 0 / 1 | 0.000 | — |
 | Claude Opus 5.5 | Quantum QAHS | 0 / 1 | 0.000 | 0.131 |
 
-*Table 3: LP85 results (v12 harness, seeds 6–10, 40 actions; Claude Opus 5.5 on seed 6 only). The SAI proxy,
-computed from each run's trace, is reported for the LLM-only and quantum conditions, and fixes T and R at 0.*
+*Table 3: LP85 results (v12 structured-world-models harness, seeds 6–10, 40 actions; Claude Opus 5.5 on seed 6 only). The SAI proxy
+is computed from the trace of each run; it is reported for the LLM-only and quantum conditions, and fixes T and R at 0.*
 
 Of Haiku's six level completions under QAHS, five directly followed an action in which the selector chose an
 alternative to the model's recommended action: three under classical QAHS and two under quantum QAHS. For GPT-6
@@ -162,7 +163,7 @@ condition did.
 | 16–31 | 8 / 16 | 6 / 16 | 5 / 16 |
 | All 26 | 12 / 26 | 12 / 26 | 10 / 26 |
 
-*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 harness, 40 actions, seeds 6–31).*
+*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 structured-world-models harness, 40 actions, seeds 6–31).*
 
 **C) Discussion**
 
@@ -175,9 +176,11 @@ performed comparably, as expected. Both optimize the same objective over the sam
 selector is exact, so QAOA [7] can match it but cannot exceed it except through sampling randomness. The present
 results therefore do not demonstrate a quantum advantage. They indicate that structured hypothesis selection can
 change agent behavior: it produced longer episodes and progress after overriding the model's preferred action.
-An early advantage for QAHS on Haiku (seeds 11–15) disappeared as the sample grew, illustrating how small samples
-can suggest effects that do not hold. Testing whether QAHS improves performance on other games, and separating the
-search architecture from QAOA with a classical control using randomized tie-breaking, remain future work.
+As in [12], passing runs and recomputed scores show that the code executes and that the reported values are
+reproducible, not that the implementation is behaviorally correct in every case. An early advantage for QAHS on Haiku
+(seeds 11–15) disappeared as the sample grew, illustrating how small samples can suggest effects that do not hold.
+Testing whether QAHS improves performance on other games, and separating the search architecture from QAOA with a
+classical control using randomized tie-breaking, remain future work.
 
 ## Abstract edits
 
@@ -206,3 +209,6 @@ linear interpolation," in *Advances in Optimization and Numerical Analysis*, S. 
 Dordrecht, The Netherlands: Kluwer, 1994, pp. 51–67.
 
 [11] F. Chollet, "On the measure of intelligence," arXiv:1911.01547, Nov. 2019.
+
+[12] J. Hartwell et al., "AI developing AI: Can AI effectively and securely develop AI-based tools that really work?"
+in *Proc. IEEE Military Communications Conference (MILCOM)*, 2026, doi: [DOI].

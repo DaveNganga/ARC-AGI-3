@@ -27,8 +27,22 @@ def clean(value, key: str = ""):
 
 def label(path: Path, data: dict) -> str:
     if data.get("harness_version"):
-        batch = data.get("batch_id") or "unbatched"
-        return f"{data.get('game_id', 'unknown')} · seed {data.get('seed', '?')} · {batch} · {data['harness_version']}"
+        model_names = {
+            "gpt-6-luna": "Luna",
+            "gpt-6-sol": "GPT-6 Sol",
+            "claude-haiku-5-5": "Haiku 5.5",
+            "claude-opus-5-5": "Opus 5.5",
+        }
+        parts = [str(data.get("game_id", "unknown")), f"seed {data.get('seed', '?')}"]
+        model = data.get("model")
+        if model:
+            parts.append(model_names.get(model, str(model)))
+        if data.get("action_budget") is not None:
+            parts.append(f"{data['action_budget']} actions")
+        batch = re.sub(r"^claude-(?:haiku-)?", "", str(data.get("batch_id") or ""))
+        if batch and batch != "unbatched":
+            parts.append(batch)
+        return " · ".join(parts)
     match = re.match(r"(\d{8})T(\d{6})Z_([^_]+)", path.name)
     if not match:
         return path.stem
@@ -54,7 +68,10 @@ def export_runs(source_dir: Path = SOURCE, target_dir: Path = TARGET, full: bool
     for source in sources:
         destination = target_dir / source.name
         cached = previous.get(source.name)
-        if (not full and cached and destination.exists() and
+        cache_is_complete = cached and {
+            "label", "game_id", "seed", "model", "batch_id"
+        }.issubset(cached)
+        if (not full and cache_is_complete and destination.exists() and
                 destination.stat().st_mtime_ns >= source.stat().st_mtime_ns):
             manifest.append(cached)
             continue

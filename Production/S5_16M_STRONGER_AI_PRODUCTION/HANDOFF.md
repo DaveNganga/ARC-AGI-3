@@ -1,9 +1,8 @@
 # S5 "Stronger AI" benchmark: results so far
 
-**Status (2026-11-03):** Qwen3:8B (instructor's local run) and Claude Opus 5.5 are complete for
-both conditions. The GPT column is waiting on our peer's report files.
-Everything is in `Production/S5_16M_STRONGER_AI_PRODUCTION/` on branch `claude/dazzling-goodall-4fc42q` of
-`abylAI02/ARC-AGI-3`.
+**Status (2026-11-07):** Qwen3:8B (instructor's local run) and Claude Opus 5.5 are complete for
+both conditions. The GPT column is still waiting on our peer's report files.
+Everything is in `Production/S5_16M_STRONGER_AI_PRODUCTION/` on `main` of `DaveNganga/ARC-AGI-3` (merged in PR #11).
 
 ## Results (instructor's metric definitions)
 
@@ -46,10 +45,11 @@ see `METRIC_CALCULATIONS.md`. Run `python metric_calculations.py LABEL=report.js
 
 ## ARC-AGI-3: Claude Haiku, Claude Opus and GPT on Dave's v12 final test
 
-On the ten matched seeds, Haiku completed a level on 4, 6 and 5 seeds (LLM / Classical / Quantum); GPT-6 Luna did
-so on 1, 1 and 2. Same harness code as Dave's `main`, game lp85, seeds 6-15, 40-action budget, medium effort. GPT
-seeds 11-15 are Dave's batch `v12-final2-lp85-retry`; Haiku's are `claude-haiku-v12-final-lp85` and
-`claude-haiku-v12-lp85-s11-15`. All Haiku episodes ran without a failed call.
+Both models ran seeds 6-16 and 25-31. GPT-6 Luna was run on 21 seeds in all (6-16 and 25-34) and Claude Haiku on 26
+(6-31). On seeds 6-15, shown below, Haiku completed a level on 4, 6 and 5 seeds (LLM / Classical / Quantum) and
+GPT-6 Luna on 1, 1 and 2. Same harness code as Dave's `main`, game lp85, 40-action budget, medium effort. GPT seeds
+11-16 are Dave's batch `v12-final2-lp85-retry` and seeds 25-34 his batch `v12-final3-lp85-s25-34` (PR #12); Haiku's
+are `claude-haiku-v12-final-lp85` and `claude-haiku-v12-lp85-s11-15`. All Haiku episodes ran without a failed call.
 
 Each cell is levels completed / actions; "lost" means game over before 40 actions.
 
@@ -77,18 +77,49 @@ credit ran out; like Haiku and GPT, it completed no level on that seed.
 | Claude Opus 5.5 | 0 / 21 lost | 0 / 31 lost | 0 / 27 lost |
 | Claude Opus 5.5, 16k output limit (excluded) | 1 / 11, ended by a truncated response | 0 / 25, ended by a truncated response | 0 / 25 lost |
 
-On Dave's `/final` SAI proxy for the ten matched seeds (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS
-score 0.273 / 0.300 for Haiku and 0.203 / 0.235 for GPT-6 Luna; Opus on seed 6 scores 0.183 / 0.192 under the same
-formulas. Values from before commit `d9a4820` (0.270 / 0.260, 0.183 / 0.218, 0.137 / 0.131) used the old Au (novelty,
+On Dave's `/final` SAI proxy (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS score 0.208 / 0.222 for
+GPT-6 Luna over its 21 seeds and 0.288 / 0.273 for Haiku over its 26 seeds (0.203 / 0.235 and 0.273 / 0.300 on seeds
+6-15 alone); Opus on seed 6 scores 0.183 / 0.192 under the same formulas. Values from before commit `d9a4820` (0.270 / 0.260, 0.183 / 0.218, 0.137 / 0.131) used the old Au (novelty,
 no-change repeats, evidence yield) and are obsolete; Au is now the adaptive-recovery rate after meaningful refutations.
 
-GPT-6 Luna seed 16 (batch `v12-final2-lp85-retry`) completed no level in any condition and is omitted so that both
-models share the ten seeds 6-15. The original `v12-final2-lp85` runs for seeds 11-16 all errored
-(`comparison_valid=false`) and are excluded.
+### GPT-6 Luna: all 21 seeds (6-16, 25-34)
 
-- **The model made the bigger difference:** Haiku 15 of 30 episodes, GPT-6 Luna 4 of 30.
-- **QAHS vs LLM-only is within noise on ten seeds** for both models, and over 26 Haiku seeds classical ties LLM-only.
-- **Quantum vs classical:** Haiku 5 vs 6 seeds, GPT 2 vs 1. Neither gap is meaningful; both selectors optimize the
+Seed 16 (batch `v12-final2-lp85-retry`) and seeds 25-34 (batch `v12-final3-lp85-s25-34`, added in Dave's PR #12) use
+the same setup. The original `v12-final2-lp85` runs for seeds 11-16 all errored (`comparison_valid=false`) and are
+excluded.
+
+| Seed | GPT LLM | GPT Classical | GPT Quantum |
+|---|---|---|---|
+| 16 | 0 / 18 lost | 0 / 28 lost | 0 / 40 lost |
+| 25 | 0 / 22 lost | 0 / 40 | 0 / 36 lost |
+| 26 | 0 / 17 lost | 0 / 36 lost | 0 / 29 lost |
+| 27 | 0 / 20 lost | 0 / 25 lost | 0 / 25 lost |
+| 28 | 1 / 40 | 0 / 40 | 0 / 40 |
+| 29 | 0 / 15 lost | 0 / 32 lost | 0 / 31 lost |
+| 30 | 0 / 19 lost | 0 / 34 lost | 0 / 40 |
+| 31 | 0 / 19 lost | 0 / 30 lost | 0 / 40 |
+| 32 | 0 / 17 lost | 0 / 36 lost | 1 / 40 |
+| 33 | 1 / 40 | 1 / 40 | 0 / 40 |
+| 34 | 0 / 19 lost | 0 / 40 lost | 0 / 35 lost |
+| **Seeds with a level, 16 and 25-34** | **2 / 11** | **1 / 11** | **1 / 11** |
+| **All 21 seeds** | **3 / 21** | **2 / 21** | **3 / 21** |
+
+| GPT-6 Luna, 21 seeds | Seeds won | Seeds lost | Sign test p |
+|---|---|---|---|
+| Classical vs LLM-only | 1 | 2 | 1.0 |
+| Quantum vs LLM-only | 2 | 2 | 1.0 |
+| Quantum vs classical | 3 | 2 | 1.0 |
+
+Levels per 100 actions over 21 seeds: LLM-only 0.621 (3 / 483), classical 0.269 (2 / 743), quantum 0.401 (3 / 749).
+Two of Luna's five QAHS level completions followed a QAOA override of its recommendation (seeds 9 and 32, both
+`click-e4` → `click-e3`); the other three followed the action Luna recommended.
+
+- **The model made the bigger difference:** on the 18 seeds both models ran, Haiku completed a level in 22 of 54
+  episodes, GPT-6 Luna in 5 of 54.
+- **QAHS vs LLM-only is within noise** for both models: Luna 3 / 2 / 3 of 21 seeds, Haiku 12 / 12 / 10 of 26 (every
+  sign test p > 0.6).
+- **The early Luna lead for quantum was noise:** seeds 6-15 gave 1 / 1 / 2, seeds 16 and 25-34 gave 2 / 1 / 1.
+- **Quantum vs classical:** Luna 3 vs 2 seeds, Haiku 10 vs 12. Neither gap is meaningful; both selectors optimize the
   same objective and classical search is exact.
 - **Limits:** one game, which was also the development game; no run got past level 1 of 8.
 
@@ -96,8 +127,8 @@ models share the ten seeds 6-15. The original `v12-final2-lp85` runs for seeds 1
 
 Over 26 seeds, QAHS showed no benefit for Haiku: classical QAHS tied LLM-only at 12 of 26 seeds, and quantum QAHS
 completed a level on 10. Seeds 11-31 used the same setup (batches `claude-haiku-v12-lp85-s11-15` and
-`claude-haiku-v12-lp85-s16plus`) with no failed calls; all 26 Haiku seeds cost about $18. GPT-6 Luna was run on seeds 6-15
-only, so seeds 16-31 extend the Haiku sample only. Seed 32 was stopped by the API credit running out and
+`claude-haiku-v12-lp85-s16plus`) with no failed calls; all 26 Haiku seeds cost about $18. GPT-6 Luna was also run on
+seeds 16 and 25-31 of this range (see above). Seed 32 was stopped by the API credit running out and
 is excluded (not published).
 
 | Seed | Haiku LLM | Haiku Classical | Haiku Quantum |
@@ -150,7 +181,8 @@ is excluded (not published).
 
 1. **Tiny samples:** 3–5 episodes per domain, one model run each. One solve changes G by 0.2.
 2. **Adaptation measures movement, not recovery.** Any grid-changing new action after the switch
-   counts, so a model can score A = 1.000 while failing every adaptation episode (Qwen LLM-only did).
+   counts, so a model can score A = 1.000 without recovering: Qwen LLM-only scored 1.000 while solving only 1 of its
+   3 adaptation episodes.
 3. **Transfer rewards double failure:** 0.5 when both cold and warm fail. Most pairs in all four runs are 0.5 for that reason.
 4. **Robustness is fragile:** Claude LLM-only's R = 1.000 comes from 1/3 clean vs 2/3 perturbed
    solves, including a perturbed solve on a world it did not solve clean.
@@ -158,6 +190,8 @@ is excluded (not published).
    six 4-qubit registers, so it is six independent 16-value problems that are exact and cheap
    classically. No quantum-advantage claim is possible; a classical-sampler control (CAHS) is the
    needed ablation.
+6. **Paper scope:** the paper reports the hidden-rule benchmark for Qwen3:8B only. The Claude Opus 5.5 S5 run stays
+   in these notes and in `PAPER_SECTIONS.md` but is not in the paper.
 
 ## Code change needed for API models
 

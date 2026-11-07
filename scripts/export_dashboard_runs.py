@@ -10,6 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "output" / "arc_runs"
 TARGET = ROOT / "frontend" / "public" / "runs"
 SENSITIVE = ("api_key", "authorization", "password", "secret", "token")
+PUBLISHED_HARNESS_PATTERN = re.compile(r"^v(?:10|11|12)(?:-|$)", re.IGNORECASE)
+
+
+def is_published_harness(value: object) -> bool:
+    return bool(PUBLISHED_HARNESS_PATTERN.match(str(value or "")))
 
 
 def clean(value, key: str = ""):
@@ -52,20 +57,49 @@ def label(path: Path, data: dict) -> str:
 
 def export_runs(source_dir: Path = SOURCE, target_dir: Path = TARGET, full: bool = False) -> int:
     target_dir.mkdir(parents=True, exist_ok=True)
+    indexed: dict[str, dict] = {}
     previous: dict[str, dict] = {}
     index_path = target_dir / "index.json"
     try:
-        previous = {row["filename"]: row for row in json.loads(index_path.read_text(encoding="utf-8"))}
+        indexed = {
+            row["filename"]: row
+            for row in json.loads(index_path.read_text(encoding="utf-8"))
+        }
+        previous = {
+            filename: row
+            for filename, row in indexed.items()
+            if is_published_harness(row.get("harness_version"))
+        }
     except (OSError, ValueError, KeyError, TypeError):
         pass
     # Recover already-published files when an older bundle predates index.json.
     for published in target_dir.glob("*.json"):
         if published.name != "index.json" and published.name not in previous:
-            previous[published.name] = {"filename": published.name}
+            try:
+                published_data = json.loads(published.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError):
+                continue
+            if is_published_harness(published_data.get("harness_version")):
+                previous[published.name] = {
+                    "filename": published.name,
+                    "label": label(published, published_data),
+                    "benchmark": published_data.get("benchmark", "arc_agi_3"),
+                    "game_id": published_data.get("game_id"),
+                    "seed": published_data.get("seed"),
+                    "action_budget": published_data.get("action_budget"),
+                    "model": published_data.get("model"),
+                    "reasoning_effort": published_data.get("reasoning_effort"),
+                    "harness_version": published_data.get("harness_version"),
+                    "input_representation": published_data.get("input_representation"),
+                    "batch_id": published_data.get("batch_id"),
+                }
     manifest = []
     sources = sorted(source_dir.glob("*.json"), reverse=True) if source_dir.exists() else []
     exported = 0
     for source in sources:
+        indexed_row = indexed.get(source.name)
+        if indexed_row and not is_published_harness(indexed_row.get("harness_version")):
+            continue
         destination = target_dir / source.name
         cached = previous.get(source.name)
         cache_is_complete = cached and {
@@ -76,6 +110,8 @@ def export_runs(source_dir: Path = SOURCE, target_dir: Path = TARGET, full: bool
             manifest.append(cached)
             continue
         data = clean(json.loads(source.read_text(encoding="utf-8")))
+        if not is_published_harness(data.get("harness_version")):
+            continue
         temporary = destination.with_suffix(destination.suffix + ".tmp")
         temporary.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
         temporary.replace(destination)
@@ -93,12 +129,15 @@ def export_runs(source_dir: Path = SOURCE, target_dir: Path = TARGET, full: bool
             "batch_id": data.get("batch_id"),
         })
         exported += 1
-    # Published history is append-only: a fresh clone may have no raw traces,
-    # and exporting must never erase runs that exist only in the public bundle.
+    # Keep allowed public-only history so a fresh clone does not need raw traces.
     present = {row["filename"] for row in manifest}
     for filename, row in previous.items():
         if filename not in present and (target_dir / filename).exists():
             manifest.append(row)
+    published_names = {row["filename"] for row in manifest}
+    for published in target_dir.glob("*.json"):
+        if published.name != "index.json" and published.name not in published_names:
+            published.unlink()
     index_temporary = index_path.with_suffix(".json.tmp")
     index_temporary.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     index_temporary.replace(index_path)

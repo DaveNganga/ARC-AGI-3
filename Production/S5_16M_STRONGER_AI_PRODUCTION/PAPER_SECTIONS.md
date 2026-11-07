@@ -77,8 +77,11 @@ as their equal-weight mean. In the hidden-rule benchmark:
 - **Robustness (R):** min(1, perturbed solve rate / clean solve rate), and 0 when no clean world is solved.
 
 For ARC-AGI-3, scores were derived from each run's trace. G is levels completed divided by the levels required to
-win; A is measured after each observed level transition; Au combines action novelty, avoidance of repeating an
-action after no change, and the rate of actions that produced observable evidence. T and R are set to 0 because a
+win; A is measured after each level transition as max(0, 1 − d/N), where d is the number of turns until the next
+externally useful action and N is the episode length. An action is externally useful if it completes a level (full
+credit) or produces a meaningful refutation (half credit): the hypotheses disagreed about the selected action's
+outcome, the observed outcome matched one of their predictions, and the belief state was revised. Au is the
+adaptive-recovery rate: the share of meaningful refutations later followed by a different, externally useful action. T and R are set to 0 because a
 single game run contains no matched transfer or perturbation pair. Exploration and hypothesis testing (Table 1) is
 reflected in the autonomy components and the recorded hypothesis catalogs but is not scored separately. All scores
 were recomputed from per-episode data and checked against the stored reports, and differences between conditions
@@ -125,7 +128,8 @@ Table 3 summarizes the LP85 experiments [1] on the v12 structured-world-models h
 and a 40-action budget. Claude Haiku 5.5 completed the first level in 15 of 30 episodes, against 4 of 30 for GPT-6
 Luna. Haiku progressed on 4, 6, and 5 seeds in the LLM-only, classical, and quantum conditions; GPT-6 Luna progressed
 on 1, 1, and 2 seeds. For seed 8, GPT-6 Luna was run twice; Table 3 uses the first run, and the repeat completed no
-level in any condition. Claude Opus 5.5, run on seed 6 only, completed no level in any condition, as did both other
+level in any condition. Seed 16 was also run for GPT-6 Luna and completed no level in any condition; it is omitted to
+keep the ten seeds matched across both models. Claude Opus 5.5, run on seed 6 only, completed no level in any condition, as did both other
 models on that seed. No run progressed beyond the first of eight levels.
 
 | Model | Condition | Seeds with a level | Levels per 100 actions | SAI proxy |
@@ -156,7 +160,9 @@ LLM-only, classical, and quantum conditions. Classical QAHS outperformed LLM-onl
 on four (paired exact sign test, p = 1.0); quantum QAHS outperformed LLM-only on four seeds and underperformed it on
 six (p = 0.75); and quantum outperformed classical on two seeds and underperformed it on four (p = 0.69). All three
 conditions succeeded on 5 seeds and none succeeded on 9, so the world instance determined the outcome more than the
-condition did.
+condition did. Of Haiku's 22 QAHS level completions over the 26 seeds, 15 directly followed an action the selector
+chose over the model's recommendation (7 of 12 under classical QAHS, 8 of 10 under quantum QAHS). Over all 26 seeds,
+the SAI proxy was 0.288 for LLM-only, 0.289 for classical QAHS, and 0.273 for quantum QAHS.
 
 | Seeds | LLM-only | Classical QAHS | Quantum QAHS |
 |---|---|---|---|

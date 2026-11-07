@@ -71,8 +71,15 @@ credit ran out; like Haiku and GPT, it completed no level on that seed.
 | Claude Opus 5.5 | 0 / 21 lost | 0 / 31 lost | 0 / 27 lost |
 | Claude Opus 5.5, 16k output limit (excluded) | 1 / 11, ended by a truncated response | 0 / 25, ended by a truncated response | 0 / 25 lost |
 
-On Dave's `/final` SAI proxy (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS score 0.270 / 0.260
-for Haiku, 0.183 / 0.218 for GPT-6 Luna, and 0.137 / 0.131 for Opus (seed 6 only).
+On Dave's `/final` SAI proxy (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS score 0.321 / 0.324
+for Haiku, 0.224 / 0.278 for GPT-6 Luna (both on seeds 6-10), and 0.183 / 0.192 for Opus (seed 6 only). On the
+matched seeds 6-15: Haiku 0.273 / 0.300, Luna 0.203 / 0.235. Values from before commit `d9a4820` (0.270 / 0.260,
+0.183 / 0.218, 0.137 / 0.131) used the old Au (novelty, no-change repeats, evidence yield) and are obsolete; Au is
+now the adaptive-recovery rate after meaningful refutations.
+
+GPT-6 Luna seed 16 (batch `v12-final2-lp85-retry`) completed no level in any condition and is omitted so that both
+models share the ten seeds 6-15. The original `v12-final2-lp85` runs for seeds 11-16 all errored
+(`comparison_valid=false`) and are excluded.
 
 - **Model, not QAHS, made the difference.** Haiku's three conditions tie at 3 of 5.
 - **Quantum tied classical (3 vs 3),** as expected: both optimize the same objective and classical is exact.
@@ -83,8 +90,8 @@ for Haiku, 0.183 / 0.218 for GPT-6 Luna, and 0.137 / 0.131 for Opus (seed 6 only
 
 Over 26 seeds, QAHS showed no benefit for Haiku: classical QAHS tied LLM-only at 12 of 26 seeds, and quantum QAHS
 completed a level on 10. Seeds 11-31 used the same setup (batches `claude-haiku-v12-lp85-s11-15` and
-`claude-haiku-v12-lp85-s16plus`) with no failed calls; all 26 Haiku seeds cost about $18. GPT-6 Luna has no runs
-beyond seed 10, so these seeds extend the Haiku sample only. Seed 32 was stopped by the API credit running out and
+`claude-haiku-v12-lp85-s16plus`) with no failed calls; all 26 Haiku seeds cost about $18. GPT-6 Luna was run on seeds 6-15
+only, so seeds 16-31 extend the Haiku sample only. Seed 32 was stopped by the API credit running out and
 is excluded (not published).
 
 | Seed | Haiku LLM | Haiku Classical | Haiku Quantum |

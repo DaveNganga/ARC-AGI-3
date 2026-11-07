@@ -314,8 +314,8 @@ export default function FinalResults() {
   return <main className="final-page">
     <header className="final-hero">
       <p className="eyebrow">Final LP85 evaluation</p>
-      <h1>Quantum QAHS retained the strongest Luna progress rate across ten seeds</h1>
-      <blockquote>Across ten matched LP85 seeds, Quantum QAHS produced progress on two Luna seeds, compared with one seed each for Luna alone and Classical QAHS. Haiku provides a second ten-seed model comparison under the same V12 harness.</blockquote>
+      <h1>No selector consistently outperformed the model alone on LP85</h1>
+      <blockquote>Across ten matched LP85 seeds, Quantum QAHS produced progress on two Luna seeds, compared with one seed each for Luna alone and Classical QAHS (sign test p = 1.0). Across 26 Haiku seeds, Haiku alone and Classical QAHS each progressed on 12 seeds and Quantum QAHS on 10.</blockquote>
       <div className="final-facts"><span><strong>10</strong> matched seeds</span><span><strong>40</strong> action maximum</span><span><strong>30</strong> episodes per model</span><span><strong>V12</strong> frozen harness</span></div>
     </header>
 
@@ -327,7 +327,7 @@ export default function FinalResults() {
           <strong>{row.name}</strong><span>{row.progressed}/{row.seeds}</span><span>{row.levels}</span><span>{row.actions}</span><span>{row.efficiency.toFixed(3)}</span><span>{row.calls}</span>
         </div>)}
       </div>
-      <p className="final-method">Showing {selectedModelDefinition.label} under the matched V12 LP85 configuration: seeds 6–15, 40 actions, and medium effort. Use the model toggle to view the other model without combining unlike rows.</p>
+      <p className="final-method">Showing {selectedModelDefinition.label} under the matched V12 LP85 configuration: seeds 6–15, 40 actions, and medium effort. Use the model toggle to view the other model without combining unlike rows. GPT-6 Luna seed 16 was also run; it completed no level in any condition and is not shown.</p>
       {selectedModel === "gpt" && directOverride && <div className="final-key-event"><small>Direct QAOA result · seed {directOverride.run.seed}, action {directOverride.turn.turn}</small><strong>Luna proposed {directOverride.turn.proposal?.recommended_candidate_id ?? "another action"}; QAOA selected {directOverride.turn.selected_candidate.candidate_id}; the game reported progress.</strong></div>}
     </section>
 
@@ -358,7 +358,7 @@ export default function FinalResults() {
         return <button type="button" className={selectedSeed === seed ? "active" : ""} disabled={!available} onClick={() => setSelectedSeed(seed)} key={seed}>Seed {seed}</button>;
       })}</div>
       {selected && <>
-        <p className="final-method">{selectedModelDefinition.label} · Condition order: {(selected.condition_order ?? []).map((item) => item.replace("qahs_qaoa", "Quantum").replace("qahs_classical", "Classical").replace("llm_only", "LLM")).join(" → ")}.{selectedModel === "gpt" && selected.seed === 8 ? " Seed 8 is locked to its first completed run." : ""}</p>
+        <p className="final-method">{selectedModelDefinition.label} · Condition order: {(selected.condition_order ?? []).map((item) => item.replace("qahs_qaoa", "Quantum").replace("qahs_classical", "Classical").replace("llm_only", "LLM")).join(" → ")}.{selectedModel === "gpt" && selected.seed === 8 ? " Seed 8 is locked to its first completed run; a repeat run completed no level in any condition." : ""}</p>
         <div className="final-table seed-table" role="table" aria-label={`${selectedModelDefinition.label} seed ${selected.seed} details`}>
           <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Levels</span><span>First progress</span><span>Actions</span><span>Final state</span><span>Model calls</span><span>QAOA turns</span></div>
           {MODES.map(({ name, key }) => {

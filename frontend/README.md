@@ -10,7 +10,7 @@ From the project root:
 bash run_dashboard.sh
 ```
 
-This refreshes `public/runs/`, starts the local experiment service on `127.0.0.1:8765`, and starts the site at `http://127.0.0.1:3000`. The Run panel is shown only on localhost.
+This refreshes `public/runs/`, starts the local experiment service on `127.0.0.1:8765`, and starts the site at `http://127.0.0.1:3000`. The Run panel is shown only on localhost. Raw traces remain in `output/arc_runs/`; only V10, V11, and V12 harness results are copied into the public dashboard bundle.
 
 ## Publish on Vercel
 

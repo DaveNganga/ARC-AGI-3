@@ -46,9 +46,10 @@ see `METRIC_CALCULATIONS.md`. Run `python metric_calculations.py LABEL=report.js
 
 ## ARC-AGI-3: Claude Haiku, Claude Opus and GPT on Dave's v12 final test
 
-Haiku completed a level on 3 of 5 seeds in every condition; GPT-6 Luna did so on 1, 0 and 2 seeds.
-Same harness code as Dave's `main`, game lp85, seeds 6-10, 40-action budget, medium effort; batch
-`claude-haiku-v12-final-lp85`. All 15 Haiku episodes ran without a failed call, for about $4.16.
+On the ten matched seeds, Haiku completed a level on 4, 6 and 5 seeds (LLM / Classical / Quantum); GPT-6 Luna did
+so on 1, 1 and 2. Same harness code as Dave's `main`, game lp85, seeds 6-15, 40-action budget, medium effort. GPT
+seeds 11-15 are Dave's batch `v12-final2-lp85-retry`; Haiku's are `claude-haiku-v12-final-lp85` and
+`claude-haiku-v12-lp85-s11-15`. All Haiku episodes ran without a failed call.
 
 Each cell is levels completed / actions; "lost" means game over before 40 actions.
 
@@ -59,7 +60,12 @@ Each cell is levels completed / actions; "lost" means game over before 40 action
 | 8 | 1 / 40 | 1 / 40 | 1 / 40 | 1 / 40 | 0 / 37 lost | 1 / 40 |
 | 9 | 1 / 40 | 0 / 40 lost | 0 / 33 lost | 0 / 24 lost | 0 / 40 | 1 / 40 |
 | 10 | 0 / 23 lost | 1 / 40 | 1 / 40 | 0 / 20 lost | 0 / 34 lost | 0 / 32 lost |
-| **Seeds with a level** | **3 / 5** | **3 / 5** | **3 / 5** | **1 / 5** | **0 / 5** | **2 / 5** |
+| 11 | 0 / 17 lost | 1 / 40 | 0 / 24 lost | 0 / 21 lost | 0 / 32 lost | 0 / 27 lost |
+| 12 | 0 / 20 lost | 1 / 40 | 1 / 40 | 0 / 17 lost | 1 / 40 | 0 / 40 |
+| 13 | 0 / 24 lost | 0 / 22 lost | 0 / 40 | 0 / 21 lost | 0 / 35 lost | 0 / 33 lost |
+| 14 | 0 / 18 lost | 0 / 21 lost | 0 / 21 lost | 0 / 26 lost | 0 / 37 lost | 0 / 36 lost |
+| 15 | 1 / 40 | 1 / 40 | 1 / 40 | 0 / 24 lost | 0 / 36 lost | 0 / 36 lost |
+| **Seeds with a level** | **4 / 10** | **6 / 10** | **5 / 10** | **1 / 10** | **1 / 10** | **2 / 10** |
 
 GPT seed 8 is the run Dave's `/final` page uses; his rerun of seed 8 completed no level in any condition.
 
@@ -71,36 +77,74 @@ credit ran out; like Haiku and GPT, it completed no level on that seed.
 | Claude Opus 5.5 | 0 / 21 lost | 0 / 31 lost | 0 / 27 lost |
 | Claude Opus 5.5, 16k output limit (excluded) | 1 / 11, ended by a truncated response | 0 / 25, ended by a truncated response | 0 / 25 lost |
 
-On Dave's `/final` SAI proxy (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS score 0.270 / 0.260
-for Haiku, 0.183 / 0.218 for GPT-6 Luna, and 0.137 / 0.131 for Opus (seed 6 only).
+On Dave's `/final` SAI proxy for the ten matched seeds (G, A, Au; T and R fixed at 0), LLM-only / Quantum QAHS
+score 0.273 / 0.300 for Haiku and 0.203 / 0.235 for GPT-6 Luna; Opus on seed 6 scores 0.183 / 0.192 under the same
+formulas. Values from before commit `d9a4820` (0.270 / 0.260, 0.183 / 0.218, 0.137 / 0.131) used the old Au (novelty,
+no-change repeats, evidence yield) and are obsolete; Au is now the adaptive-recovery rate after meaningful refutations.
 
-- **Model, not QAHS, made the difference.** Haiku's three conditions tie at 3 of 5.
-- **Quantum tied classical (3 vs 3),** as expected: both optimize the same objective and classical is exact.
-- **GPT's "Quantum wins" edge (2 vs 1 seeds) does not carry over to Haiku** and is within noise at 5 seeds.
-- **Limits:** one game, 5 seeds, lp85 was the development game, and no model got past level 1 of 8.
+GPT-6 Luna seed 16 (batch `v12-final2-lp85-retry`) completed no level in any condition and is omitted so that both
+models share the ten seeds 6-15. The original `v12-final2-lp85` runs for seeds 11-16 all errored
+(`comparison_valid=false`) and are excluded.
 
-### Extended Haiku sample: seeds 6-15
+- **The model made the bigger difference:** Haiku 15 of 30 episodes, GPT-6 Luna 4 of 30.
+- **QAHS vs LLM-only is within noise on ten seeds** for both models, and over 26 Haiku seeds classical ties LLM-only.
+- **Quantum vs classical:** Haiku 5 vs 6 seeds, GPT 2 vs 1. Neither gap is meaningful; both selectors optimize the
+  same objective and classical search is exact.
+- **Limits:** one game, which was also the development game; no run got past level 1 of 8.
 
-With five more seeds (batch `claude-haiku-v12-lp85-s11-15`, same setup, about $3.08, no failed calls), classical
-QAHS leads Haiku's LLM-only condition 6 to 4 seeds, but the gap is not significant. GPT-6 Luna has no runs on
-seeds 11-15, so these seeds extend the Haiku sample only.
+### Extended Haiku sample: 26 seeds (6-31)
+
+Over 26 seeds, QAHS showed no benefit for Haiku: classical QAHS tied LLM-only at 12 of 26 seeds, and quantum QAHS
+completed a level on 10. Seeds 11-31 used the same setup (batches `claude-haiku-v12-lp85-s11-15` and
+`claude-haiku-v12-lp85-s16plus`) with no failed calls; all 26 Haiku seeds cost about $18. GPT-6 Luna was run on seeds 6-15
+only, so seeds 16-31 extend the Haiku sample only. Seed 32 was stopped by the API credit running out and
+is excluded (not published).
 
 | Seed | Haiku LLM | Haiku Classical | Haiku Quantum |
 |---|---|---|---|
+| 6 | 0 / 24 lost | 0 / 23 lost | 0 / 31 lost |
+| 7 | 1 / 40 | 1 / 40 | 1 / 40 |
+| 8 | 1 / 40 | 1 / 40 | 1 / 40 |
+| 9 | 1 / 40 | 0 / 40 lost | 0 / 33 lost |
+| 10 | 0 / 23 lost | 1 / 40 | 1 / 40 |
 | 11 | 0 / 17 lost | 1 / 40 | 0 / 24 lost |
 | 12 | 0 / 20 lost | 1 / 40 | 1 / 40 |
 | 13 | 0 / 24 lost | 0 / 22 lost | 0 / 40 |
 | 14 | 0 / 18 lost | 0 / 21 lost | 0 / 21 lost |
 | 15 | 1 / 40 | 1 / 40 | 1 / 40 |
-| **Seeds 6-10** | **3 / 5** | **3 / 5** | **3 / 5** |
-| **Seeds 11-15** | **1 / 5** | **3 / 5** | **2 / 5** |
-| **All 10 seeds** | **4 / 10** | **6 / 10** | **5 / 10** |
+| 16 | 1 / 40 | 0 / 30 lost | 1 / 40 |
+| 17 | 0 / 20 lost | 0 / 22 lost | 0 / 18 lost |
+| 18 | 0 / 20 lost | 0 / 19 lost | 1 / 40 |
+| 19 | 1 / 40 | 0 / 27 lost | 0 / 26 lost |
+| 20 | 1 / 40 | 1 / 40 | 0 / 33 lost |
+| 21 | 1 / 40 | 1 / 40 | 1 / 40 |
+| 22 | 1 / 40 | 1 / 40 | 1 / 40 |
+| 23 | 1 / 40 | 1 / 40 | 0 / 35 lost |
+| 24 | 0 / 21 lost | 0 / 29 lost | 0 / 23 lost |
+| 25 | 0 / 23 lost | 0 / 23 lost | 0 / 20 lost |
+| 26 | 0 / 31 lost | 0 / 31 lost | 0 / 40 |
+| 27 | 0 / 25 lost | 0 / 17 lost | 0 / 28 lost |
+| 28 | 1 / 40 | 1 / 40 | 0 / 23 lost |
+| 29 | 0 / 18 lost | 1 / 40 | 1 / 40 |
+| 30 | 1 / 40 | 0 / 20 lost | 0 / 21 lost |
+| 31 | 0 / 28 lost | 0 / 20 lost | 0 / 37 lost |
 
-- **Classical vs LLM-only:** classical won on 3 seeds (10, 11, 12) and lost on 1 (9); paired sign test p = 0.625.
-- **Quantum vs LLM-only:** won 2, lost 1; p = 1.0.
-- **Quantum vs classical:** classical won 1 (seed 11), quantum none; p = 1.0, as expected since classical search is exact.
-- Seeds 6-10 tied three ways; seeds 11-15 tilt toward QAHS. Roughly 30 seeds would be needed for a gap of this size
-  to reach significance.
+| Seeds | LLM | Classical | Quantum |
+|---|---|---|---|
+| 6-10 | 3 / 5 | 3 / 5 | 3 / 5 |
+| 11-15 | 1 / 5 | 3 / 5 | 2 / 5 |
+| 16-31 | 8 / 16 | 6 / 16 | 5 / 16 |
+| **All 26 seeds** | **12 / 26** | **12 / 26** | **10 / 26** |
+
+| Paired comparison | Seeds won | Seeds lost | Sign test p |
+|---|---|---|---|
+| Classical vs LLM-only | 4 | 4 | 1.0 |
+| Quantum vs LLM-only | 4 | 6 | 0.75 |
+| Quantum vs classical | 2 | 4 | 0.69 |
+
+- **The seed mattered more than the condition:** all three conditions succeeded on 5 seeds and none on 9.
+- **The earlier QAHS lead was noise.** Seeds 11-15 favored QAHS, but seeds 16-31 favored LLM-only.
+- **Quantum did not beat classical** (2 seeds won, 4 lost), as expected: both optimize the same objective.
 
 ## Caveats to put in the paper
 

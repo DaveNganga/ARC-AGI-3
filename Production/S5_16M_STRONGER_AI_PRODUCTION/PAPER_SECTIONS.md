@@ -97,7 +97,7 @@ its reasoning counts toward that limit; an earlier 16,000-token limit truncated 
 comparisons.
 
 Three experiments were run: (1) the hidden-rule benchmark with Qwen3:8B and Claude Opus 5.5, all 18 episodes in
-each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–15, a 40-action budget, and the v12 structured-world-models harness;
+each condition; (2) the ARC-AGI-3 game LP85 with GPT-6 Luna, seeds 6–31, a 40-action budget, and the v12 structured-world-models harness;
 and (3) the same LP85 configuration with Claude Haiku 5.5 on seeds 6–31, plus Claude Opus 5.5 on seed 6.
 
 ## Results and Discussion
@@ -124,28 +124,26 @@ Qwen and p = 1.0 for Claude in every capability).
 
 **B) ARC-AGI-3 Game LP85**
 
-Table 3 summarizes the LP85 experiments [1] on the v12 structured-world-models harness, with ten matched seeds (6–15)
-and a 40-action budget. Claude Haiku 5.5 completed the first level in 15 of 30 episodes, against 4 of 30 for GPT-6
-Luna. Haiku progressed on 4, 6, and 5 seeds in the LLM-only, classical, and quantum conditions; GPT-6 Luna progressed
-on 1, 1, and 2 seeds. For seed 8, GPT-6 Luna was run twice; Table 3 uses the first run, and the repeat completed no
-level in any condition. Seed 16 was also run for GPT-6 Luna and completed no level in any condition; it is omitted to
-keep the ten seeds matched across both models. Claude Opus 5.5, run on seed 6 only, completed no level in any condition, as did both other
-models on that seed. No run progressed beyond the first of eight levels.
+Table 3 summarizes the LP85 experiments [1] on the v12 structured-world-models harness, with 26 matched seeds (6–31)
+and a 40-action budget. Claude Haiku 5.5 completed the first level in 34 of 78 episodes, against 9 of 78 for GPT-6
+Luna. Haiku progressed on 12, 12, and 10 seeds in the LLM-only, classical, and quantum conditions; GPT-6 Luna
+progressed on 2, 3, and 4 seeds. No run progressed beyond the first of eight levels. Claude Opus 5.5, run on seed 6
+only, completed no level in any condition and is reported separately because it is not part of the matched sample.
 
 | Model | Condition | Seeds with a level | Levels per 100 actions | SAI proxy |
 |---|---|---|---|---|
-| GPT-6 Luna | LLM-only | 1 / 10 | 0.422 | 0.203 |
-| GPT-6 Luna | Classical QAHS | 1 / 10 | 0.276 | — |
-| GPT-6 Luna | Quantum QAHS | 2 / 10 | 0.567 | 0.235 |
-| Claude Haiku 5.5 | LLM-only | 4 / 10 | 1.399 | 0.273 |
-| Claude Haiku 5.5 | Classical QAHS | 6 / 10 | 1.734 | — |
-| Claude Haiku 5.5 | Quantum QAHS | 5 / 10 | 1.433 | 0.300 |
+| GPT-6 Luna | LLM-only | 2 / 26 | 0.336 | 0.194 |
+| GPT-6 Luna | Classical QAHS | 3 / 26 | 0.326 | 0.216 |
+| GPT-6 Luna | Quantum QAHS | 4 / 26 | 0.436 | 0.225 |
+| Claude Haiku 5.5 | LLM-only | 12 / 26 | 1.515 | 0.288 |
+| Claude Haiku 5.5 | Classical QAHS | 12 / 26 | 1.456 | 0.289 |
+| Claude Haiku 5.5 | Quantum QAHS | 10 / 26 | 1.172 | 0.273 |
 | Claude Opus 5.5 | LLM-only | 0 / 1 | 0.000 | 0.183 |
 | Claude Opus 5.5 | Classical QAHS | 0 / 1 | 0.000 | — |
 | Claude Opus 5.5 | Quantum QAHS | 0 / 1 | 0.000 | 0.192 |
 
-*Table 3: LP85 results on ten matched seeds (v12 structured-world-models harness, seeds 6–15, 40 actions; Claude Opus
-5.5 on seed 6 only). The SAI proxy is computed from the trace of each run with the dashboard's definitions; it is
+*Table 3: LP85 results on 26 matched seeds (v12 structured-world-models harness, seeds 6–31, 40 actions; Claude Opus
+5.5 is shown separately on seed 6 only). The SAI proxy is computed from the trace of each run with the dashboard's definitions; it is
 reported for the LLM-only and quantum conditions, and fixes T and R at 0.*
 
 Of Haiku's eleven level completions under QAHS on these seeds, seven directly followed an action in which the selector
@@ -154,31 +152,20 @@ GPT-6 Luna, one of its three QAHS completions followed such an override, under q
 selection produced the same pattern, these transitions show the value of hypothesis-driven selection in general, not
 of QAOA specifically.
 
-To enlarge the Haiku sample, seeds 16–31 were also run with the same configuration (GPT-6 Luna was not run on these
-seeds). Table 4 reports the results. Over all 26 seeds, Haiku completed a level on 12, 12, and 10 seeds in the
-LLM-only, classical, and quantum conditions. Classical QAHS outperformed LLM-only on four seeds and underperformed it
-on four (paired exact sign test, p = 1.0); quantum QAHS outperformed LLM-only on four seeds and underperformed it on
-six (p = 0.75); and quantum outperformed classical on two seeds and underperformed it on four (p = 0.69). All three
-conditions succeeded on 5 seeds and none succeeded on 9, so the world instance determined the outcome more than the
-condition did. Of Haiku's 22 QAHS level completions over the 26 seeds, 15 directly followed an action the selector
-chose over the model's recommendation (7 of 12 under classical QAHS, 8 of 10 under quantum QAHS). Over all 26 seeds,
-the SAI proxy was 0.288 for LLM-only, 0.289 for classical QAHS, and 0.273 for quantum QAHS.
-
-| Seeds | LLM-only | Classical QAHS | Quantum QAHS |
-|---|---|---|---|
-| 6–10 | 3 / 5 | 3 / 5 | 3 / 5 |
-| 11–15 | 1 / 5 | 3 / 5 | 2 / 5 |
-| 16–31 | 8 / 16 | 6 / 16 | 5 / 16 |
-| All 26 | 12 / 26 | 12 / 26 | 10 / 26 |
-
-*Table 4: Claude Haiku 5.5 on LP85, seeds with at least one completed level (v12 structured-world-models harness, 40 actions, seeds 6–31).*
+Paired seed comparisons did not establish a selector advantage. For Luna, quantum QAHS outperformed LLM-only on
+three seeds and underperformed it on one (paired exact sign test, p = 0.625); classical QAHS had three wins and two
+losses (p = 1.0). For Haiku, quantum QAHS had four wins and six losses (p = 0.754), while classical QAHS had four wins
+and four losses (p = 1.0). Of Haiku's 22 QAHS level completions, 15 directly followed an action the selector chose
+over the model's recommendation (7 of 12 under classical QAHS and 8 of 10 under quantum QAHS). These are behavioral
+attributions for the executed action, not counterfactual proof that the model's rejected action would have failed.
 
 **C) Discussion**
 
-Across both environments, the model had a larger effect than the selection method. On LP85, Haiku outperformed
-GPT-6 Luna in every condition on the ten matched seeds (15 of 30 episodes against 4 of 30); over 26 seeds, classical
-QAHS tied Haiku's LLM-only condition (12 of 26 seeds each) and quantum QAHS trailed slightly (10 of 26), with no
-difference approaching statistical significance. On the hidden-rule benchmark, QAHS helped the smaller
+Across both environments, the model had a larger effect than the selection method. On the 26 matched LP85 seeds,
+Haiku produced progress in 34 of 78 episodes, compared with 9 of 78 for GPT-6 Luna. Within Haiku, classical QAHS tied
+LLM-only at 12 of 26 progressing seeds and quantum QAHS trailed at 10 of 26. Within Luna, quantum QAHS led at 4 of 26,
+followed by classical QAHS at 3 and LLM-only at 2, but the paired differences were not statistically significant.
+On the hidden-rule benchmark, QAHS helped the smaller
 model and hindered the larger one, but each change rests on one to three episodes. Quantum and classical QAHS
 performed comparably, as expected. Both optimize the same objective over the same candidates, and the classical
 selector is exact, so QAOA [7] can match it but cannot exceed it except through sampling randomness. The present

@@ -23,7 +23,7 @@ posterior. V3.3 leaves the V3.2 code paths unchanged, so the existing Claude Opu
 
 | Model | LLM-only SAI | QAHS SAI | Collaborative SAI |
 |---|---|---|---|
-| Qwen3:8B (professor) | 0.400 | 0.475 | not in the zip; the professor runs it locally |
+| Qwen3:8B | 0.400 | 0.475 | 0.442 |
 | Claude Opus 5.5 | 0.718 | 0.459 | 0.430 |
 
 ## Setup (about 2 minutes)
@@ -127,4 +127,28 @@ Estimate basis: the Opus V3.2 runs used 0.85-0.93M input and 0.10-0.11M output t
   of the composite), and the LLM's hypothesis was often incomplete. So for Opus, collaborative
   behaved almost like QAHS.
 - Claude Haiku 5.5: not run.
-- Qwen3:8B collaborative: not in the zip; ask the professor for his report.
+- **Qwen3:8B collaborative: complete.** 18 episodes, 198 calls, no failed calls, 454,245 prompt
+  and 44,212 output tokens, 24 min wall, $0 (local Ollama). Results in
+  `s5_16m_collaborative_results/` and `s5_16m_collaborative_report.json`.
+
+  | Qwen3:8B | G | A | Au | T | R | SAI |
+  |---|---|---|---|---|---|---|
+  | LLM-only (V3.2, professor) | 0.000 | 1.000 | 0.667 | 0.333 | 0.000 | 0.400 |
+  | QAHS (V3.2, professor) | 0.200 | 0.944 | 0.729 | 0.500 | 0.000 | 0.475 |
+  | Collaborative (V3.3) | 0.000 | 1.000 | 0.708 | 0.500 | 0.000 | 0.442 |
+
+  No paired difference is significant (lowest p = 0.625, Au vs LLM-only; every other domain
+  p = 1.0). The arbiter chose the QAHS action on 186 of 198 turns, ran a diagnostic on 9 and found
+  agreement on 3; **it never chose the LLM** — the same outcome as Opus, and notable because Qwen's
+  hypothesis parses as complete far more often than Opus's. Even when parseable it does not
+  outscore the posterior MAP world on the composite, so collaborative again behaved almost like
+  QAHS, landing between LLM-only and QAHS.
+
+  Run conditions, because the package does not set them: Ollama's default context is **4096** on
+  this machine, so the server was started with `OLLAMA_CONTEXT_LENGTH=32768`
+  (`OLLAMA_KEEP_ALIVE=30m`). No prompt exceeded 3,131 tokens, and the professor's V3.2 traces peak
+  at 3,511, so neither run was ever truncated. The adapter sends no `seed`, so these runs are
+  **not** bitwise reproducible even at `temperature=0`; measured non-determinism on this GPU.
+  `benchmark_manifest.json` and `stronger_ai_metric_spec_v1_1.json` must stay LF — Git's
+  `core.autocrlf=true` rewrites them to CRLF on Windows checkout, which changes
+  `manifest_sha256` to `5f58c72c…` and breaks the pairing guard with no effect on the episodes.

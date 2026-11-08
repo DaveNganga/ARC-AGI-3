@@ -1,0 +1,212 @@
+{
+  "comparison": "collaborative condition, Claude Opus 5.5 vs Qwen3:8B",
+  "benchmark_id": "S5-16M-STRONGER-AI-v1",
+  "profile": "paper",
+  "condition": "collaborative",
+  "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+  "metric_spec_sha256": "d9d0afba4400a303b4955ee1a62510b1d60390b878e8f9e3796161fc2b341781",
+  "paired": true,
+  "pairing_basis": "identical benchmark_id, manifest_sha256, metric_spec_sha256, profile, max_steps and per-episode seeds; both conditions are text-only, so the comparison is modality-matched",
+  "models": {
+    "opus": {
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "SAI": 0.4304444444444445,
+      "scores": {
+        "G": 0.0,
+        "Au": 0.7077777777777778,
+        "A": 1.0,
+        "T": 0.4444444444444445,
+        "R": 0.0
+      },
+      "reasoning_effort": null,
+      "temperature": "not settable (Anthropic)"
+    },
+    "qwen": {
+      "provider": "ollama",
+      "model": "qwen3:8b",
+      "SAI": 0.4415555555555556,
+      "scores": {
+        "G": 0.0,
+        "Au": 0.7077777777777778,
+        "A": 1.0,
+        "T": 0.5,
+        "R": 0.0
+      },
+      "reasoning_effort": "none (thinking disabled)",
+      "temperature": 0
+    }
+  },
+  "SAI_delta_qwen_minus_opus": 0.011111111111111072,
+  "paired_domain_tests": {
+    "G": {
+      "opus": 0.0,
+      "qwen": 0.0,
+      "delta_qwen_minus_opus": 0.0,
+      "n": 5,
+      "qwen_better": 0,
+      "opus_better": 0,
+      "ties": 5,
+      "two_sided_exact_sign_p": 1.0,
+      "opus_per_episode": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qwen_per_episode": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_episode_identical": true
+    },
+    "A": {
+      "opus": 1.0,
+      "qwen": 1.0,
+      "delta_qwen_minus_opus": 0.0,
+      "n": 3,
+      "qwen_better": 0,
+      "opus_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "opus_per_episode": [
+        1,
+        1,
+        1
+      ],
+      "qwen_per_episode": [
+        1,
+        1,
+        1
+      ],
+      "per_episode_identical": true
+    },
+    "Au": {
+      "opus": 0.7077777777777778,
+      "qwen": 0.7077777777777778,
+      "delta_qwen_minus_opus": 0.0,
+      "n": 5,
+      "qwen_better": 0,
+      "opus_better": 0,
+      "ties": 5,
+      "two_sided_exact_sign_p": 1.0,
+      "opus_per_episode": [
+        0.8333333333333334,
+        0.7777777777777778,
+        0.5111111111111112,
+        0.4166666666666667,
+        1.0
+      ],
+      "qwen_per_episode": [
+        0.8333333333333334,
+        0.7777777777777778,
+        0.5111111111111112,
+        0.4166666666666667,
+        1.0
+      ],
+      "per_episode_identical": true
+    },
+    "T": {
+      "opus": 0.4444444444444445,
+      "qwen": 0.5,
+      "delta_qwen_minus_opus": 0.055555555555555525,
+      "n": 3,
+      "qwen_better": 1,
+      "opus_better": 0,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "opus_per_episode": [
+        0.5,
+        0.5,
+        0.33333333333333337
+      ],
+      "qwen_per_episode": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "per_episode_identical": false
+    },
+    "R": {
+      "opus": 0.0,
+      "qwen": 0.0,
+      "delta_qwen_minus_opus": 0.0,
+      "n": 3,
+      "qwen_better": 0,
+      "opus_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "opus_per_episode": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qwen_per_episode": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_episode_identical": true
+    }
+  },
+  "arbitration_counts": {
+    "opus": {
+      "agreement": 4,
+      "llm": 0,
+      "llm_action": 0,
+      "qa_hs": 189,
+      "diagnostic": 11
+    },
+    "qwen": {
+      "agreement": 3,
+      "llm": 0,
+      "llm_action": 0,
+      "qa_hs": 186,
+      "diagnostic": 9
+    }
+  },
+  "trajectory_divergence": {
+    "episodes_compared": 18,
+    "identical_action_sequences": 3,
+    "identical_action_sequence_episodes": [
+      "G03.json",
+      "G03_perturbed.json",
+      "T03_cold.json"
+    ],
+    "first_divergence_turn": {
+      "A01.json": 8,
+      "A02.json": 1,
+      "A03.json": 1,
+      "G01.json": 6,
+      "G01_perturbed.json": 8,
+      "G02.json": 7,
+      "G02_perturbed.json": 11,
+      "G03.json": null,
+      "G03_perturbed.json": null,
+      "G04.json": 2,
+      "G05.json": 7,
+      "T01_cold.json": 12,
+      "T01_warm.json": 1,
+      "T02_cold.json": 10,
+      "T02_warm.json": 1,
+      "T03_cold.json": null,
+      "T03_warm.json": 1,
+      "source.json": 4
+    }
+  },
+  "behavioural_components_identical": {
+    "episodes_compared": 18,
+    "identical": 13,
+    "components": [
+      "novel_experiment_rate",
+      "redundant_action_rate",
+      "no_change_action_persistence"
+    ]
+  },
+  "finding": "Scores are identical in 4 of 5 domains and per-episode identical in G, A, Au and R. The entire SAI difference is one transfer pair (T03: 0.333 vs 0.500). Action sequences nevertheless differ in 15 of 18 episodes, yet all three autonomy components match per episode. The arbiter took the QAHS action on 189/204 (Opus) and 186/198 (Qwen) turns and never chose the LLM, so the behavioural profile is set by the QAHS planner rather than by the language model.",
+  "claim_discipline": "18 episodes per condition; no paired difference reaches significance (every domain p = 1.0). This is not a model-capability ranking, and it is not evidence that an 8B model matches a frontier model in general - only that in this condition the arbiter rarely lets the LLM act. Qwen ran at temperature 0 with thinking off and no seed (not reproducible); Opus cannot set temperature. The six 4-qubit QAOA registers are uncoupled, so no quantum-advantage claim is available."
+}

@@ -20,7 +20,8 @@ manifest, metric spec, scoring, QAHS, and the Ollama and OpenAI paths are untouc
    `format`. Without it Claude invents its own keys, and the first smoke test failed with
    `Invalid selected_action: None`. The Claude adapter now sends the same schema through
    `output_config.format`, minus the `maxLength` / `minimum` / `maximum` / `maxItems` limits that
-   structured outputs does not accept. `_validate` still checks the action and clamps confidence.
+   structured outputs does not accept. `_validate` still rejects an invalid action; confidence is
+   clipped to 0-1 where QAHS uses it (`clip01`). In all 405 Opus turns it stayed within 0-1.
 
 The OpenAI adapter has the same missing-schema gap. Any GPT result produced with the code as
 shipped either failed validation or relied on the model guessing the field names; check how the

@@ -35,7 +35,37 @@ MODEL=claude-haiku-5-5 bash RUN_COLLABORATIVE_CLAUDE.sh   # Haiku 5.5 -> claude_
 ```
 
 Checked here: the 8 package tests pass, and a placeholder-model smoke run of `collaborative`
-with the Aer QAOA sampler completes and records the same manifest and metric-spec hashes.
+with the Aer QAOA sampler completes and records the same manifest and metric-spec hashes. An
+offline mock of the Anthropic call (anthropic SDK 2.6.0; the Opus V3.2 run used 2.4.0, and both
+send API version 2026-10-21) shows the exact request: no `temperature`, `max_tokens` 16000,
+effort medium, the reply schema.
+
+## Review findings (2026-11-08)
+
+1. **Resume bug in `run_s5_benchmark.py` (fixed in the launcher, not in the package).** On
+   `--resume`, line 248 reloads the transfer source's QAHS state only for `--condition qahs`. A
+   collaborative run resumed between the transfer source and its warm episodes would run those
+   warm episodes without the transferred posterior, which changes the Transfer score. Reproduced
+   with the placeholder model: two fresh runs gave identical warm episodes, and the resumed run
+   took different actions in all three. `RUN_COLLABORATIVE_CLAUDE.sh` deletes an incomplete
+   transfer block before resuming, so it reruns in one pass as in a fresh run. An uninterrupted
+   run, such as the professor's Qwen run, is unaffected. The Opus V3.2 QAHS run was not affected:
+   it ran all 18 episodes in one pass.
+2. **The comparison script does not check the model.** `compare_s5_collaborative.py` checks the
+   benchmark and profile only, so it would pair a Qwen report with a Claude one. The launcher
+   checks provider, model, manifest, metric spec and profile first.
+3. **Confidence is not clamped in `_validate`.** Qwen's schema bounds it to 0-1; the Claude
+   schema cannot. QAHS and the arbiter clip it with `clip01`, and in all 405 Opus V3.2 turns it
+   stayed within 0-1.
+4. **For interpreting results (professor's design; affects both models alike):**
+   - The arbiter takes the first value listed per rule family as the LLM's hypothesis and uses it
+     only when all six families are present. Qwen usually lists the ontology in order (`P0, P1, P2,
+     P3`), so its "hypothesis" is mostly P0 G0 M0 T0 I0 S0. Opus lists real candidates but often
+     omits family G, so in the V3.2 traces its hypothesis would be complete on 63% of turns
+     (Qwen: 90%). On the other turns the arbiter falls back to QAHS.
+   - `_candidate_predictive_fit` locates each history entry with `history.index(h)`, which finds
+     the first equal entry, so a repeated identical move (for example bumping the same wall twice)
+     is scored against the earlier history prefix. Minor: the term has 22% weight.
 
 ## Cost estimate (paper profile, 18 episodes)
 

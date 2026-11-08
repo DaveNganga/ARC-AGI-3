@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -11,10 +12,14 @@ import numpy as np
 from .arc_encoding import ArcEncoding
 from .arc_models import ArcActionCandidate, ArcGroundedGoal, ArcHypothesis
 from .models import ActionScore
+from .providers.anthropic_provider import AnthropicJSONCaller
+from .providers.ollama_provider import OllamaJSONCaller
 from .providers.openai_provider import OpenAIJSONCaller
 from .search import ClassicalSearch, QAOASearch
 
 HARNESS_VERSION = "arc2-v1-shared-catalog"
+DEFAULT_MODELS = {"openai": ("OPENAI_MODEL", "gpt-6-luna"), "anthropic": ("ANTHROPIC_MODEL", "claude-opus-5-5"),
+                  "ollama": ("OLLAMA_MODEL", "qwen3:8b")}
 LUNA_MEDIUM_TASKS = (
     "136b0064", "1818057f", "291dc1e1", "2ba387bc", "31f7f899", "3dc255db",
     "45a5af55", "58f5dbd5", "8f3a5a89", "981571dc", "b5ca7ac4", "b99e7126",
@@ -46,6 +51,14 @@ ARC2_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
 }
 
+def _make_caller(provider: str, model: str, effort: str):
+    """Build the JSON caller for the chosen provider; the prompt and schema are unchanged."""
+    if provider == "anthropic":
+        return AnthropicJSONCaller(model, effort)
+    if provider == "ollama":
+        return OllamaJSONCaller(model, effort)
+    return OpenAIJSONCaller(model, effort)
+
 def _grid_text(grid: list[list[int]]) -> str:
     return "/".join(",".join(str(cell) for cell in row) for row in grid)
 
@@ -62,6 +75,18 @@ For each hypothesis, report confidence, estimated fit to every training example,
 
 {tests}
 """
+
+def _task_schema(task: dict[str, Any]) -> dict[str, Any]:
+    """ARC2_SCHEMA with ``outputs`` pinned to one grid per test input.
+
+    _normalise discards any candidate whose output count differs, so leaving the count
+    unconstrained lets a model return a schema-valid catalog with nothing usable in it.
+    Stating the count here lets constrained decoding enforce what the harness requires.
+    """
+    schema = deepcopy(ARC2_SCHEMA)
+    outputs = schema["properties"]["candidates"]["items"]["properties"]["outputs"]
+    outputs["minItems"] = outputs["maxItems"] = len(task["test"])
+    return schema
 
 def load_task(root: Path, task_id: str) -> dict[str, Any]:
     if task_id not in LUNA_MEDIUM_TASKS:
@@ -120,10 +145,12 @@ def _episode(label: str, candidate: dict[str, Any], task: dict[str, Any], hypoth
         "candidate_outputs": candidate["outputs"],
     }]}
 
-def run_arc2_comparison(root: Path, task_id: str, model: str, effort: str, batch_id: str | None = None) -> Path:
+def run_arc2_comparison(root: Path, task_id: str, model: str, effort: str, batch_id: str | None = None,
+                        provider: str = "openai") -> Path:
     task = load_task(root, task_id)
     started = perf_counter()
-    raw = OpenAIJSONCaller(model, effort).call_json(_prompt(task_id, task), ARC2_SCHEMA, "arc_agi_2_catalog")
+    caller = _make_caller(provider, model, effort)
+    raw = caller.call_json(_prompt(task_id, task), _task_schema(task), "arc_agi_2_catalog")
     proposal_seconds = perf_counter() - started
     hypotheses, candidates = _normalise(raw, task)
     encoding, costs, valid, scores = _catalog(hypotheses, candidates)
@@ -140,11 +167,16 @@ def run_arc2_comparison(root: Path, task_id: str, model: str, effort: str, batch
         diagnostics = {**result.diagnostics, "backend": result.backend, "quantum_used": condition == "qahs_qaoa", "model_recommended_candidate_id": recommended, "selection_seconds": selection_seconds}
         episodes[key] = _episode(condition, by_id[str(result.action)], task, hypotheses, diagnostics, selection_seconds)
     trace = {"benchmark": "arc_agi_2", "source": "arc_agi_2", "game_id": task_id, "seed": 0, "action_budget": 1,
-        "model": model, "reasoning_effort": effort, "batch_id": batch_id, "harness_version": HARNESS_VERSION,
+        "model": model, "provider": provider,
+        # Report the effort the caller actually applied: the Ollama provider rewrites it to "none".
+        "reasoning_effort": getattr(caller, "reasoning_effort", effort),
+        "model_settings": dict(getattr(caller, "settings", {}) or {}),
+        "batch_id": batch_id, "harness_version": HARNESS_VERSION,
         "input_representation": "lossless-grid-json", "catalog": {"summary": raw.get("summary"), "recommendation_reason": raw.get("recommendation_reason"), "hypotheses": hypotheses, "candidates": candidates}, **episodes}
     output = root / "output" / "arc_runs"
     output.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = output / f"{stamp}__{HARNESS_VERSION}__{batch_id or 'unbatched'}__{task_id}__seed-00__actions-1__{model}__comparison.json"
+    safe = lambda value: "".join(char.lower() if char.isalnum() else "-" for char in str(value)).strip("-") or "unknown"
+    path = output / f"{stamp}__{HARNESS_VERSION}__{batch_id or 'unbatched'}__{task_id}__seed-00__actions-1__{safe(model)}__comparison.json"
     path.write_text(json.dumps(trace, indent=2), encoding="utf-8")
     return path

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -134,6 +135,43 @@ class LocalRunSessionTests(unittest.TestCase):
         self.assertEqual(claude[claude.index("--model") + 1], "claude-haiku-5-5")
         self.assertNotIn("--provider", gpt)
         self.assertEqual(gpt[gpt.index("--harness") + 1], "v12")
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_ollama_model_needs_no_credentials_on_either_benchmark(self) -> None:
+        arc2 = {"source": "arc2", "game": "e8686506", "seed": 0, "max_steps": 1,
+                "model": "qwen3:8b", "reasoning_effort": "medium"}
+        self.assertEqual(runner.validate(arc2)[5], "qwen3:8b")
+        with self.assertRaisesRegex(runner.PublicError, "OpenAI credentials"):
+            runner.validate({**arc2, "model": "gpt-6-luna"})
+        # ARC-AGI-3 still needs a key online; offline plays the bundled games instead.
+        arc3 = {"source": "arc", "game": "ls20", "seed": 0, "max_steps": 2,
+                "model": "qwen3:8b", "reasoning_effort": "medium"}
+        with self.assertRaisesRegex(runner.PublicError, "ARC_API_KEY"):
+            runner.validate(arc3)
+        with patch.dict("os.environ", {"QAHS_ARC_MODE": "offline"}):
+            self.assertEqual(runner.validate(arc3)[5], "qwen3:8b")
+
+    @patch.dict("os.environ", {"QAHS_ARC_MODE": "offline"}, clear=True)
+    def test_command_adds_ollama_provider_on_both_benchmarks(self) -> None:
+        class Captured(Exception):
+            pass
+
+        commands = []
+
+        def fake_popen(command, **kwargs):
+            commands.append(command)
+            raise Captured
+
+        for payload in ({"source": "arc", "game": "ls20", "seed": 0, "max_steps": 2, "harness": "v12"},
+                        {"source": "arc2", "game": "e8686506", "seed": 0, "max_steps": 1}):
+            with patch.object(runner.subprocess, "Popen", fake_popen), self.assertRaises(Captured):
+                runner.run_experiment({**payload, "model": "qwen3:8b", "reasoning_effort": "medium"})
+        arc3, arc2 = commands
+        for command in (arc3, arc2):
+            self.assertEqual(command[command.index("--provider") + 1], "ollama")
+            self.assertEqual(command[command.index("--model") + 1], "qwen3:8b")
+        # A Windows venv exposes entry points in Scripts, not bin.
+        self.assertIn(("Scripts" if os.name == "nt" else "bin"), arc2[0])
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "openai"}, clear=True)
     def test_arc2_batch_uses_curated_tasks_without_arc_credentials(self) -> None:

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "output" / "arc_runs"
 TARGET = ROOT / "frontend" / "public" / "runs"
 SENSITIVE = ("api_key", "authorization", "password", "secret", "token")
-PUBLISHED_HARNESS_PATTERN = re.compile(r"^v(?:10|11|12)(?:-|$)", re.IGNORECASE)
+PUBLISHED_HARNESS_PATTERN = re.compile(r"^(?:v(?:10|11|12)|arc2-v\d+)(?:-|$)", re.IGNORECASE)
 
 
 def is_published_harness(value: object) -> bool:
@@ -37,6 +37,7 @@ def label(path: Path, data: dict) -> str:
             "gpt-6-sol": "GPT-6 Sol",
             "claude-haiku-5-5": "Haiku 5.5",
             "claude-opus-5-5": "Opus 5.5",
+            "qwen3:8b": "Qwen3 8B",
         }
         parts = [str(data.get("game_id", "unknown")), f"seed {data.get('seed', '?')}"]
         model = data.get("model")

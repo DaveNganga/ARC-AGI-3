@@ -34,21 +34,19 @@ type FinalRun = {
 type ModeName = "LLM" | "Classical" | "Quantum";
 type ManifestRow = { filename: string; batch_id?: string | null; model?: string | null; seed?: number | null; game_id?: string | null };
 
-const FINAL_FILES = [
-  "20261103T195204Z__v12-structured-world-models__v12-final-lp85__lp85__seed-06__actions-40__gpt-6-luna__comparison.json",
-  "20261103T205521Z__v12-structured-world-models__v12-final-lp85__lp85__seed-07__actions-40__gpt-6-luna__comparison.json",
-  "20261103T231803Z__v12-structured-world-models__v12-final-lp85__lp85__seed-08__actions-40__gpt-6-luna__comparison.json",
-  "20261104T022151Z__v12-structured-world-models__v12-final-lp85__lp85__seed-09__actions-40__gpt-6-luna__comparison.json",
-  "20261104T035320Z__v12-structured-world-models__v12-final-lp85__lp85__seed-10__actions-40__gpt-6-luna__comparison.json",
+const MATCHED_SEEDS = Array.from({ length: 26 }, (_, index) => 6 + index);
+const HAIKU_SERIES = { id: "haiku", label: "Claude Haiku 5.5", model: "claude-haiku-5-5", missing: "pending" } as const;
+const LUNA_SEGMENTS = [
+  { batch: "v12-final-lp85", seeds: Array.from({ length: 5 }, (_, index) => 6 + index) },
+  { batch: "v12-final2-lp85-retry", seeds: Array.from({ length: 6 }, (_, index) => 11 + index) },
+  { batch: "v12-final-gap-s17-24", seeds: Array.from({ length: 8 }, (_, index) => 17 + index) },
+  { batch: "v12-final3-lp85-s25-34", seeds: Array.from({ length: 7 }, (_, index) => 25 + index) },
 ] as const;
-
-const FINAL_SEEDS = [6, 7, 8, 9, 10];
-const HAIKU_SERIES = { id: "haiku", label: "Claude Haiku 5.5", batch: "claude-haiku-v12-final-lp85", model: "claude-haiku-5-5", missing: "pending" } as const;
-const HAIKU_EXTENDED = { batch: "claude-haiku-v12-lp85-s11-15", model: "claude-haiku-5-5", seeds: [11, 12, 13, 14, 15] } as const;
-const LUNA_EXTENDED = { batch: "v12-final2-lp85-retry", model: "gpt-6-luna", seeds: [11, 12, 13, 14, 15] } as const;
-const INSPECTION_SEEDS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
-// Haiku seeds beyond the matched ten (no GPT-6 Luna runs), shown in their own section below.
-const HAIKU_ADDITIONAL = { batch: "claude-haiku-v12-lp85-s16plus", model: "claude-haiku-5-5", seeds: Array.from({ length: 20 }, (_, index) => 16 + index) };
+const HAIKU_SEGMENTS = [
+  { batch: "claude-haiku-v12-final-lp85", seeds: Array.from({ length: 5 }, (_, index) => 6 + index) },
+  { batch: "claude-haiku-v12-lp85-s11-15", seeds: Array.from({ length: 5 }, (_, index) => 11 + index) },
+  { batch: "claude-haiku-v12-lp85-s16plus", seeds: Array.from({ length: 16 }, (_, index) => 16 + index) },
+] as const;
 const PRIMARY_MODELS = [
   { id: "gpt", label: "GPT-6 Luna", missing: "pending" },
   HAIKU_SERIES,
@@ -61,7 +59,7 @@ function ModelToggle({ selected, onSelect }: { selected: PrimaryModelId; onSelec
   </div>;
 }
 
-function seriesFiles(manifest: ManifestRow[], batch: string, model: string, seeds: readonly number[] = FINAL_SEEDS) {
+function seriesFiles(manifest: ManifestRow[], batch: string, model: string, seeds: readonly number[]) {
   const metadata = (row: ManifestRow) => {
     const parts = row.filename.split("__");
     return {
@@ -82,6 +80,15 @@ function seriesFiles(manifest: ManifestRow[], batch: string, model: string, seed
     if (!first.has(seed)) first.set(seed, row.filename);
   });
   return Array.from(first.values());
+}
+
+function matchedSeriesFiles(manifest: ManifestRow[], model: string, segments: readonly { batch: string; seeds: readonly number[] }[]) {
+  const bySeed = new Map<number, string>();
+  segments.forEach(({ batch, seeds }) => seriesFiles(manifest, batch, model, seeds).forEach((filename) => {
+    const seed = Number(filename.split("__")[4]?.replace("seed-", ""));
+    if (MATCHED_SEEDS.includes(seed) && !bySeed.has(seed)) bySeed.set(seed, filename);
+  }));
+  return Array.from(bySeed.entries()).sort(([left], [right]) => left - right).map(([, filename]) => filename);
 }
 
 function loadRun(filename: string) {
@@ -254,52 +261,34 @@ function episodeSummary(episode: Episode) {
 export default function FinalResults() {
   const [runs, setRuns] = useState<FinalRun[]>([]);
   const [haikuRuns, setHaikuRuns] = useState<FinalRun[]>([]);
-  const [haikuExtended, setHaikuExtended] = useState<FinalRun[]>([]);
-  const [lunaExtended, setLunaExtended] = useState<FinalRun[]>([]);
-  const [haikuAdditional, setHaikuAdditional] = useState<FinalRun[]>([]);
   const [selectedModel, setSelectedModel] = useState<PrimaryModelId>("gpt");
   const [selectedSeed, setSelectedSeed] = useState(6);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all(FINAL_FILES.map((filename) => fetch(`/runs/${filename}`, { cache: "no-store" })
-      .then((response) => { if (!response.ok) throw new Error(`Missing final run: ${filename}`); return response.json(); })
-      .then((run: FinalRun) => ({ ...run, filename }))))
-      .then((loaded) => setRuns(loaded.sort((left, right) => left.seed - right.seed)))
-      .catch((reason: Error) => setError(reason.message));
     fetch("/runs/index.json", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((manifest: ManifestRow[]) => Promise.all([
-        Promise.all(seriesFiles(manifest, HAIKU_SERIES.batch, HAIKU_SERIES.model).map(loadRun)),
-        Promise.all(seriesFiles(manifest, HAIKU_EXTENDED.batch, HAIKU_EXTENDED.model, HAIKU_EXTENDED.seeds).map(loadRun)),
-        Promise.all(seriesFiles(manifest, LUNA_EXTENDED.batch, LUNA_EXTENDED.model, LUNA_EXTENDED.seeds).map(loadRun)),
+        Promise.all(matchedSeriesFiles(manifest, "gpt-6-luna", LUNA_SEGMENTS).map(loadRun)),
+        Promise.all(matchedSeriesFiles(manifest, HAIKU_SERIES.model, HAIKU_SEGMENTS).map(loadRun)),
       ]))
-      .then(([haiku, extendedHaiku, extendedLuna]) => {
+      .then(([luna, haiku]) => {
+        if (luna.length !== MATCHED_SEEDS.length || haiku.length !== MATCHED_SEEDS.length) {
+          throw new Error(`Incomplete matched final set: Luna ${luna.length}/26, Haiku ${haiku.length}/26`);
+        }
+        setRuns(luna.sort((left, right) => left.seed - right.seed));
         setHaikuRuns(haiku.sort((left, right) => left.seed - right.seed));
-        setHaikuExtended(extendedHaiku.sort((left, right) => left.seed - right.seed));
-        setLunaExtended(extendedLuna.sort((left, right) => left.seed - right.seed));
       })
-      .catch(() => { setHaikuRuns([]); setHaikuExtended([]); setLunaExtended([]); });
-    fetch("/runs/index.json", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : []))
-      .then((manifest: ManifestRow[]) => Promise.all(seriesFiles(manifest, HAIKU_ADDITIONAL.batch, HAIKU_ADDITIONAL.model, HAIKU_ADDITIONAL.seeds).map(loadRun)))
-      .then((loaded) => setHaikuAdditional(loaded.sort((left, right) => left.seed - right.seed)))
-      .catch(() => setHaikuAdditional([]));
+      .catch((reason: Error) => setError(reason.message));
   }, []);
 
-  const allLunaRuns = useMemo(() => [...runs, ...lunaExtended].sort((left, right) => left.seed - right.seed), [runs, lunaExtended]);
-  const allHaikuRuns = useMemo(() => [...haikuRuns, ...haikuExtended].sort((left, right) => left.seed - right.seed), [haikuRuns, haikuExtended]);
+  const allLunaRuns = runs;
+  const allHaikuRuns = haikuRuns;
   const runsByModel = useMemo(() => ({ gpt: allLunaRuns, haiku: allHaikuRuns }) as Record<PrimaryModelId, FinalRun[]>, [allLunaRuns, allHaikuRuns]);
-  const haikuAllSeeds = useMemo(() => [...allHaikuRuns, ...haikuAdditional].sort((left, right) => left.seed - right.seed), [allHaikuRuns, haikuAdditional]);
-  const additionalTotals = useMemo(() => [
-    { label: "Seeds 6–15 (matched)", runs: allHaikuRuns },
-    { label: `Seeds 16–${Math.max(16, ...haikuAdditional.map((run) => run.seed))}`, runs: haikuAdditional },
-    { label: `All ${haikuAllSeeds.length} seeds`, runs: haikuAllSeeds },
-  ].map(({ label, runs: group }) => ({ label, seeds: group.length, progressed: MODES.map(({ key }) => group.filter((run) => levels(run[key]) > 0).length) })), [allHaikuRuns, haikuAdditional, haikuAllSeeds]);
   const selectedAggregate = useMemo(() => aggregateFor(runsByModel[selectedModel]), [runsByModel, selectedModel]);
   const selectedModelDefinition = PRIMARY_MODELS.find((model) => model.id === selectedModel) ?? PRIMARY_MODELS[0];
   const capability = useMemo(() => PRIMARY_MODELS.flatMap(({ id, label, missing }) => capabilityFor(runsByModel[id]).map((row) => ({ ...row, model: label, missing }))), [runsByModel]);
-  const inspectionRuns = (selectedModel === "gpt" ? allLunaRuns : allHaikuRuns).filter((run) => INSPECTION_SEEDS.includes(run.seed as (typeof INSPECTION_SEEDS)[number]));
+  const inspectionRuns = (selectedModel === "gpt" ? allLunaRuns : allHaikuRuns).filter((run) => MATCHED_SEEDS.includes(run.seed));
   const selected = inspectionRuns.find((run) => run.seed === selectedSeed) ?? inspectionRuns[0];
   const directOverride = useMemo(() => runs.flatMap((run) => turns(run.with_qahs).map((turn) => ({ run, turn })))
     .find(({ turn }) => Number(turn.observation_after.levels_completed ?? 0) > Number(turn.observation_before.levels_completed ?? 0)
@@ -315,19 +304,19 @@ export default function FinalResults() {
     <header className="final-hero">
       <p className="eyebrow">Final LP85 evaluation</p>
       <h1>No selector consistently outperformed the model alone on LP85</h1>
-      <blockquote>Across ten matched LP85 seeds, Quantum QAHS produced progress on two Luna seeds, compared with one seed each for Luna alone and Classical QAHS (sign test p = 1.0). Across 26 Haiku seeds, Haiku alone and Classical QAHS each progressed on 12 seeds and Quantum QAHS on 10.</blockquote>
-      <div className="final-facts"><span><strong>10</strong> matched seeds</span><span><strong>40</strong> action maximum</span><span><strong>30</strong> episodes per model</span><span><strong>V12</strong> frozen harness</span></div>
+      <blockquote>Across 26 matched LP85 seeds, Quantum QAHS produced progress on four Luna seeds, compared with two for Luna alone and three for Classical QAHS. For Haiku, the model alone and Classical QAHS each progressed on 12 seeds, while Quantum QAHS progressed on 10.</blockquote>
+      <div className="final-facts"><span><strong>26</strong> matched seeds</span><span><strong>40</strong> action maximum</span><span><strong>78</strong> episodes per model</span><span><strong>V12</strong> frozen harness</span></div>
     </header>
 
     <section className="final-section">
-      <div className="seed-heading"><div><p className="section-number">Aggregate outcome</p><h2>Matched ten-seed comparison</h2></div><ModelToggle selected={selectedModel} onSelect={setSelectedModel} /></div>
+      <div className="seed-heading"><div><p className="section-number">Aggregate outcome</p><h2>Matched 26-seed comparison</h2></div><ModelToggle selected={selectedModel} onSelect={setSelectedModel} /></div>
       <div className="final-table" role="table" aria-label={`${selectedModelDefinition.label} aggregate final evaluation`}>
         <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Progressing seeds</span><span>Levels</span><span>Actions</span><span>Levels / 100 actions</span><span>Model calls</span></div>
         {selectedAggregate.map((row) => <div className={`final-table-row mode-${row.name.toLowerCase()}`} role="row" key={`${selectedModel}-${row.name}`}>
           <strong>{row.name}</strong><span>{row.progressed}/{row.seeds}</span><span>{row.levels}</span><span>{row.actions}</span><span>{row.efficiency.toFixed(3)}</span><span>{row.calls}</span>
         </div>)}
       </div>
-      <p className="final-method">Showing {selectedModelDefinition.label} under the matched V12 LP85 configuration: seeds 6–15, 40 actions, and medium effort. Use the model toggle to view the other model without combining unlike rows. GPT-6 Luna seed 16 was also run; it completed no level in any condition and is not shown.</p>
+      <p className="final-method">Showing {selectedModelDefinition.label} under the matched V12 LP85 configuration: seeds 6–31, 40 actions, and medium effort. Use the model toggle to view the other model without combining unlike rows. Luna-only seeds 32–34 remain available in the run browser but are excluded here because no corresponding Haiku runs exist.</p>
       {selectedModel === "gpt" && directOverride && <div className="final-key-event"><small>Direct QAOA result · seed {directOverride.run.seed}, action {directOverride.turn.turn}</small><strong>Luna proposed {directOverride.turn.proposal?.recommended_candidate_id ?? "another action"}; QAOA selected {directOverride.turn.selected_candidate.candidate_id}; the game reported progress.</strong></div>}
     </section>
 
@@ -344,7 +333,7 @@ export default function FinalResults() {
 
     <section className="final-section">
       <p className="section-number">Capability proxy averages</p>
-      <h2>Run-level scores aggregated across ten seeds</h2>
+      <h2>Run-level scores aggregated across 26 seeds</h2>
       <div className="final-table capability-final-table with-model" role="table" aria-label="Aggregate capability proxy scores">
         <div className="final-table-row final-table-head" role="row"><span>Condition</span><span>Model</span><span>G</span><span>A</span><span>Au</span><span>T</span><span>R</span><span>SAI proxy</span></div>
         {capability.map((row) => <div className="final-table-row" role="row" key={`${row.model}-${row.name}`}><strong>{row.name}</strong><span>{row.model}</span>{row.seeds ? row.scores.map((score, index) => <span key={index}>{score.toFixed(3)}</span>) : [0, 1, 2, 3, 4, 5].map((index) => <span key={index}>{index ? "—" : row.missing}</span>)}</div>)}
@@ -353,7 +342,7 @@ export default function FinalResults() {
 
     <section className="final-section seed-explorer">
       <div className="seed-heading"><div><p className="section-number">Inspect a matched run</p><h2>Seed-level details</h2></div><ModelToggle selected={selectedModel} onSelect={setSelectedModel} /></div>
-      <div className="seed-tabs seed-run-tabs" role="group" aria-label={`${selectedModelDefinition.label} final run seed`}>{INSPECTION_SEEDS.map((seed) => {
+      <div className="seed-tabs seed-run-tabs" role="group" aria-label={`${selectedModelDefinition.label} final run seed`}>{MATCHED_SEEDS.map((seed) => {
         const available = inspectionRuns.some((run) => run.seed === seed);
         return <button type="button" className={selectedSeed === seed ? "active" : ""} disabled={!available} onClick={() => setSelectedSeed(seed)} key={seed}>Seed {seed}</button>;
       })}</div>
@@ -371,17 +360,5 @@ export default function FinalResults() {
       </>}
     </section>
 
-    {haikuAdditional.length > 0 && <section className="final-section">
-      <p className="section-number">Additional Claude Haiku 5.5 seeds</p>
-      <h2>Claude Haiku 5.5 beyond the matched ten seeds</h2>
-      <p className="final-method">Seeds 16 onward use batch {HAIKU_ADDITIONAL.batch} with the same V12 harness, 40-action budget and medium effort. GPT-6 Luna was not run on these seeds, so they extend the Haiku sample only. Each cell is levels completed / actions taken; “lost” means the game ended before the action budget.</p>
-      <div className="final-table with-model extended-table" role="table" aria-label="Additional Claude Haiku 5.5 seeds">
-        <div className="final-table-row final-table-head" role="row"><span>Seed</span><span>Set</span>{MODES.map(({ name }) => <span key={name}>{name}</span>)}<span></span><span></span></div>
-        {haikuAdditional.map((run) => <div className="final-table-row" role="row" key={run.filename}><strong>Seed {run.seed}</strong><span>additional (16+)</span>
-          {MODES.map(({ key }) => { const summary = episodeSummary(run[key]); return <span key={key}>{summary.levels} / {summary.actions}{summary.finalState === "GAME_OVER" ? " lost" : ""}</span>; })}<span></span><span></span></div>)}
-        {additionalTotals.map((row) => <div className="final-table-row final-table-total" role="row" key={row.label}><strong>{row.label}</strong><span>seeds with a level</span>
-          {row.progressed.map((count, index) => <span key={index}>{count}/{row.seeds}</span>)}<span></span><span></span></div>)}
-      </div>
-    </section>}
   </main>;
 }

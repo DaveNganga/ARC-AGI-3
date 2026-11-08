@@ -1,0 +1,4 @@
+QAHS V3.3 Collaborative S5 Production Candidate
+Hypothesis space: 16^6 = 16,777,216 = 2^24
+Base architecture: QAHS V3.2-S5
+New capability: evidence-based LLM/QAHS collaboration and diagnostic arbitration

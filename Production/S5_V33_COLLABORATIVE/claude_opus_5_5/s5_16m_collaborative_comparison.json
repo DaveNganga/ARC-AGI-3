@@ -1,0 +1,157 @@
+{
+  "benchmark_id": "S5-16M-STRONGER-AI-v1",
+  "profile": "paper",
+  "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+  "scores": {
+    "G": {
+      "llm": 0.2,
+      "qahs": 0.0,
+      "collaborative": 0.0,
+      "qahs_delta_vs_llm": -0.2,
+      "collab_delta_vs_llm": -0.2,
+      "collab_delta_vs_qahs": 0.0
+    },
+    "A": {
+      "llm": 0.9444444444444445,
+      "qahs": 1.0,
+      "collaborative": 1.0,
+      "qahs_delta_vs_llm": 0.05555555555555547,
+      "collab_delta_vs_llm": 0.05555555555555547,
+      "collab_delta_vs_qahs": 0.0
+    },
+    "Au": {
+      "llm": 0.9444444444444444,
+      "qahs": 0.7540740740740741,
+      "collaborative": 0.7077777777777778,
+      "qahs_delta_vs_llm": -0.1903703703703703,
+      "collab_delta_vs_llm": -0.23666666666666658,
+      "collab_delta_vs_qahs": -0.04629629629629628
+    },
+    "T": {
+      "llm": 0.5,
+      "qahs": 0.5416666666666666,
+      "collaborative": 0.4444444444444445,
+      "qahs_delta_vs_llm": 0.04166666666666663,
+      "collab_delta_vs_llm": -0.055555555555555525,
+      "collab_delta_vs_qahs": -0.09722222222222215
+    },
+    "R": {
+      "llm": 1.0,
+      "qahs": 0.0,
+      "collaborative": 0.0,
+      "qahs_delta_vs_llm": -1.0,
+      "collab_delta_vs_llm": -1.0,
+      "collab_delta_vs_qahs": 0.0
+    }
+  },
+  "paired_domain_tests": {
+    "collaborative_vs_qahs_G": {
+      "n": 5,
+      "collab_better": 0,
+      "baseline_better": 0,
+      "ties": 5,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.0,
+      "collaborative_mean": 0.0,
+      "mean_delta": 0.0
+    },
+    "collaborative_vs_llm_G": {
+      "n": 5,
+      "collab_better": 0,
+      "baseline_better": 1,
+      "ties": 4,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.2,
+      "collaborative_mean": 0.0,
+      "mean_delta": -0.2
+    },
+    "collaborative_vs_qahs_A": {
+      "n": 3,
+      "collab_better": 0,
+      "baseline_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 1.0,
+      "collaborative_mean": 1.0,
+      "mean_delta": 0.0
+    },
+    "collaborative_vs_llm_A": {
+      "n": 3,
+      "collab_better": 1,
+      "baseline_better": 0,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.9444444444444445,
+      "collaborative_mean": 1.0,
+      "mean_delta": 0.05555555555555547
+    },
+    "collaborative_vs_qahs_Au": {
+      "n": 5,
+      "collab_better": 1,
+      "baseline_better": 2,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.7540740740740741,
+      "collaborative_mean": 0.7077777777777778,
+      "mean_delta": -0.04629629629629628
+    },
+    "collaborative_vs_llm_Au": {
+      "n": 5,
+      "collab_better": 0,
+      "baseline_better": 3,
+      "ties": 2,
+      "two_sided_exact_sign_p": 0.25,
+      "baseline_mean": 0.9444444444444444,
+      "collaborative_mean": 0.7077777777777778,
+      "mean_delta": -0.23666666666666658
+    },
+    "collaborative_vs_qahs_T": {
+      "n": 3,
+      "collab_better": 0,
+      "baseline_better": 1,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.5416666666666666,
+      "collaborative_mean": 0.4444444444444445,
+      "mean_delta": -0.09722222222222215
+    },
+    "collaborative_vs_llm_T": {
+      "n": 3,
+      "collab_better": 0,
+      "baseline_better": 1,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.5,
+      "collaborative_mean": 0.4444444444444445,
+      "mean_delta": -0.055555555555555525
+    },
+    "collaborative_vs_qahs_R": {
+      "n": 3,
+      "collab_better": 0,
+      "baseline_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.0,
+      "collaborative_mean": 0.0,
+      "mean_delta": 0.0
+    },
+    "collaborative_vs_llm_R": {
+      "n": 3,
+      "collab_better": 0,
+      "baseline_better": 1,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "baseline_mean": 0.3333333333333333,
+      "collaborative_mean": 0.0,
+      "mean_delta": -0.3333333333333333
+    }
+  },
+  "SAI": {
+    "llm": 0.7177777777777778,
+    "qahs": 0.45914814814814814,
+    "collaborative": 0.4304444444444445,
+    "collab_delta_vs_llm": -0.28733333333333333,
+    "collab_delta_vs_qahs": -0.02870370370370362
+  },
+  "claim_discipline": "V3.3 tests collaborative arbitration; it does not establish AGI/Strong AI or quantum advantage."
+}

@@ -10,19 +10,24 @@ from .arc_agent import run_arc_comparison, run_arc_episode, save_arc_trace
 from .arc_environment import ArcSDKEnvironment, DemoArcEnvironment
 from .arc_reasoner import DemoArcReasoner, OpenAIArcReasoner
 from .providers.anthropic_provider import AnthropicJSONCaller
+from .providers.ollama_provider import OllamaJSONCaller
 from .providers.openai_provider import OpenAIJSONCaller
 from .compositional import CompositionalReasoner, run_compositional_comparison
 from .information_gain import InformationGainReasoner, run_information_gain_comparison
 from .structured_world_models import StructuredWorldReasoner, run_structured_world_comparison
 
-DEFAULT_MODELS = {"openai": ("OPENAI_MODEL", "gpt-6-luna"), "anthropic": ("ANTHROPIC_MODEL", "claude-opus-5-5")}
-DEFAULT_EFFORTS = {"openai": "OPENAI_REASONING_EFFORT", "anthropic": "ANTHROPIC_EFFORT"}
+DEFAULT_MODELS = {"openai": ("OPENAI_MODEL", "gpt-6-luna"), "anthropic": ("ANTHROPIC_MODEL", "claude-opus-5-5"),
+                  "ollama": ("OLLAMA_MODEL", "qwen3:8b")}
+DEFAULT_EFFORTS = {"openai": "OPENAI_REASONING_EFFORT", "anthropic": "ANTHROPIC_EFFORT",
+                   "ollama": "OLLAMA_EFFORT"}
 
 
 def make_caller(args):
     """Build the JSON caller for the chosen provider; prompts, schemas, and selectors are unchanged."""
     if args.provider == "anthropic":
         return AnthropicJSONCaller(args.model, args.reasoning_effort)
+    if args.provider == "ollama":
+        return OllamaJSONCaller(args.model, args.reasoning_effort)
     return OpenAIJSONCaller(args.model, args.reasoning_effort)
 
 
@@ -39,6 +44,8 @@ def main() -> None:
     parser.add_argument("--reasoning-effort", choices=("none", "low", "medium", "high", "xhigh", "max"), default=None)
     parser.add_argument("--output-dir", default="output/arc_runs")
     parser.add_argument("--harness", choices=("v7", "v10", "v11", "v12"), default=os.environ.get("QAHS_HARNESS", "v12"))
+    parser.add_argument("--arc-mode", choices=("online", "offline"), default=os.environ.get("QAHS_ARC_MODE", "online"),
+                        help="offline plays the games bundled in environment_files without ARC_API_KEY")
     args = parser.parse_args()
     model_env, default_model = DEFAULT_MODELS[args.provider]
     args.model = args.model or os.environ.get(model_env, default_model)
@@ -63,7 +70,7 @@ def main() -> None:
     else:
         game_id = args.game
         recordings = Path("output/arc_recordings")
-        environment_factory = lambda: ArcSDKEnvironment(args.game, args.seed, recordings)
+        environment_factory = lambda: ArcSDKEnvironment(args.game, args.seed, recordings, mode=args.arc_mode)
         reasoner_factory = lambda: OpenAIArcReasoner(make_caller(args))
 
     if args.condition == "compare" and args.harness == "v12" and args.source == "arc":

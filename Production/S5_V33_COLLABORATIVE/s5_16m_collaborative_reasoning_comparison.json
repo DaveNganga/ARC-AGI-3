@@ -1,0 +1,233 @@
+{
+  "comparison": "qwen3:8b collaborative - effect of reasoning, with a schema control",
+  "benchmark_id": "S5-16M-STRONGER-AI-v1",
+  "profile": "paper",
+  "condition": "collaborative",
+  "paired": true,
+  "provenance": {
+    "baseline": {
+      "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+      "metric_spec_sha256": "d9d0afba4400a303b4955ee1a62510b1d60390b878e8f9e3796161fc2b341781"
+    },
+    "C1_schema_only": {
+      "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+      "metric_spec_sha256": "d9d0afba4400a303b4955ee1a62510b1d60390b878e8f9e3796161fc2b341781"
+    },
+    "B_reasoning": {
+      "manifest_sha256": "59e6e3b221458cdb215483e5a7d8c1dcc0251887d0762d3774fbf3389362e5a4",
+      "metric_spec_sha256": "d9d0afba4400a303b4955ee1a62510b1d60390b878e8f9e3796161fc2b341781"
+    }
+  },
+  "arms": {
+    "baseline": {
+      "think": false,
+      "schema": "as shipped",
+      "SAI": 0.4415555555555556,
+      "scores": {
+        "G": 0.0,
+        "Au": 0.7077777777777778,
+        "A": 1.0,
+        "T": 0.5,
+        "R": 0.0
+      },
+      "note": "the published canonical row"
+    },
+    "C1_schema_only": {
+      "think": false,
+      "schema": "leading_rules families required, minItems 1",
+      "SAI": 0.4415555555555556,
+      "scores": {
+        "G": 0.0,
+        "Au": 0.7077777777777778,
+        "A": 1.0,
+        "T": 0.5,
+        "R": 0.0
+      },
+      "note": "score-identical to baseline; isolates the schema change"
+    },
+    "B_reasoning": {
+      "think": true,
+      "schema": "leading_rules families required, minItems 1",
+      "temperature": 0,
+      "SAI": 0.42000000000000004,
+      "scores": {
+        "G": 0.0,
+        "Au": 0.7666666666666666,
+        "A": 1.0,
+        "T": 0.3333333333333333,
+        "R": 0.0
+      },
+      "note": "reasoning on top of C1"
+    }
+  },
+  "paired_domain_tests_B_vs_C1": {
+    "G": {
+      "C1": 0.0,
+      "B": 0.0,
+      "delta_B_minus_C1": 0.0,
+      "n": 5,
+      "B_better": 0,
+      "C1_better": 0,
+      "ties": 5,
+      "two_sided_exact_sign_p": 1.0,
+      "C1_per_episode": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "B_per_episode": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "A": {
+      "C1": 1.0,
+      "B": 1.0,
+      "delta_B_minus_C1": 0.0,
+      "n": 3,
+      "B_better": 0,
+      "C1_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "C1_per_episode": [
+        1,
+        1,
+        1
+      ],
+      "B_per_episode": [
+        1,
+        1,
+        1
+      ]
+    },
+    "Au": {
+      "C1": 0.7077777777777778,
+      "B": 0.7666666666666666,
+      "delta_B_minus_C1": 0.05888888888888877,
+      "n": 5,
+      "B_better": 2,
+      "C1_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 0.5,
+      "C1_per_episode": [
+        0.8333333333333334,
+        0.7777777777777778,
+        0.5111111111111112,
+        0.4166666666666667,
+        1.0
+      ],
+      "B_per_episode": [
+        0.8333333333333334,
+        0.7777777777777778,
+        0.6666666666666666,
+        0.5555555555555555,
+        1.0
+      ]
+    },
+    "T": {
+      "C1": 0.5,
+      "B": 0.3333333333333333,
+      "delta_B_minus_C1": -0.16666666666666669,
+      "n": 3,
+      "B_better": 0,
+      "C1_better": 1,
+      "ties": 2,
+      "two_sided_exact_sign_p": 1.0,
+      "C1_per_episode": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "B_per_episode": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    "R": {
+      "C1": 0.0,
+      "B": 0.0,
+      "delta_B_minus_C1": 0.0,
+      "n": 3,
+      "B_better": 0,
+      "C1_better": 0,
+      "ties": 3,
+      "two_sided_exact_sign_p": 1.0,
+      "C1_per_episode": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "B_per_episode": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "arbitration_counts": {
+    "baseline": {
+      "agreement": 3,
+      "llm": 0,
+      "llm_action": 0,
+      "qa_hs": 186,
+      "diagnostic": 9
+    },
+    "C1_schema_only": {
+      "agreement": 3,
+      "llm": 0,
+      "llm_action": 0,
+      "qa_hs": 181,
+      "diagnostic": 14
+    },
+    "B_reasoning": {
+      "agreement": 3,
+      "llm": 0,
+      "llm_action": 0,
+      "qa_hs": 188,
+      "diagnostic": 14
+    }
+  },
+  "cost": {
+    "C1_schema_only": {
+      "logged_calls": 198,
+      "complete_six": 198,
+      "content_is_json": 198,
+      "output_tokens_total": 45172,
+      "output_tokens_mean": 228,
+      "output_tokens_max": 277,
+      "thinking_chars_mean": 0,
+      "thinking_chars_max": 0,
+      "wall_per_call_mean_s": 3.4,
+      "wall_per_call_max_s": 4.6,
+      "retries": 0,
+      "upstream_failures": 0
+    },
+    "B_reasoning": {
+      "logged_calls": 249,
+      "complete_six": 248,
+      "content_is_json": 248,
+      "output_tokens_total": 583105,
+      "output_tokens_mean": 2341,
+      "output_tokens_max": 6000,
+      "thinking_chars_mean": 8236,
+      "thinking_chars_max": 26797,
+      "wall_per_call_mean_s": 30.8,
+      "wall_per_call_max_s": 74.4,
+      "retries": 0,
+      "upstream_failures": 1
+    }
+  },
+  "finding": "Reasoning moved SAI from 0.4416 to 0.4200: autonomy up 0.059 (two episodes), transfer down 0.167 (one pair). Nothing significant, lowest p 0.500. Decisively, llm and llm_action remained 0 across all 205 turns even though the model reasoned ~8,236 chars per turn and returned a complete six-family hypothesis on every call. The arbiter's composite weights log posterior at 78%, which a single LLM guess does not outscore; reasoning does not change that. Autonomy still shifted because the LLM action is passed into choose_action as a hint and the diagnostic branch consumes the hypothesis, so the model steers without ever being handed the turn.",
+  "without_the_schema_fix": "think=true alone returns leading_rules {} - 0 of 6 families in 8 of 8 sampled turns - because the shipped schema sets no required list and no minItems. The arbiter would then ignore the LLM on every turn and collaborative would silently become plain QAHS.",
+  "harness_failures": [
+    "A num_predict 6000 cap added as a safety valve bounded thinking and content together; one 26,797-char think left zero budget for the JSON, content came back empty and the package's unguarded json.loads aborted the suite at episode 12 of 18. Healthy calls: p50 2,332, p99 4,423.",
+    "Removing the cap exposed a stall: one call returned nothing for the full 900s timeout. Second such event in ~140 calls, consistent with the repetition loop Qwen documents for greedy decoding in thinking mode. Final config: cap 12,000, timeout 240s, up to 2 logged retries; the remaining 7 episodes then completed with 0 retries and 0 failures."
+  ],
+  "claim_discipline": "18 episodes per condition; lowest p 0.500, so no difference is significant. Both new arms deviate from the frozen package by requiring the rule families, so they are experiments and not replacements for the published row. No seed is sent, so reasoning runs are not reproducible. The six 4-qubit QAOA registers are uncoupled, so no quantum-advantage claim is available."
+}
